@@ -1,5 +1,5 @@
-<script>
-	import { flip } from 'svelte/animate';
+<script lang="ts">
+	import { type Todo } from './App.svelte';
 
 	let { todos, remove, toggle, update, users } = $props();
 
@@ -7,11 +7,11 @@
 
 	let editValues = $state({ description: '', assigneeId: '' });
 
-	function startEdit(todo) {
+	function startEdit(todo: Todo) {
 		editingId = todo.id;
 		editValues = {
 			description: todo.description,
-			assigneeId: users.find((u) => u.name === todo.assignee)?.id || ''
+			assigneeId: users.find((u) => u.id === todo.assigneeId)?.id || ''
 		};
 	}
 
@@ -26,7 +26,7 @@
 
 <ul class="todos">
 	{#each todos as todo (todo.id)}
-		<li class:done={todo.done} animate:flip={{ duration: 200 }}>
+		<li class:done={todo.done}>
 			<div class="todo-item-layout">
 				<label class="checkbox-container">
 					<input type="checkbox" checked={todo.done} onclick={() => toggle(todo)} />
