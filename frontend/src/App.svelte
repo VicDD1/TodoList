@@ -31,7 +31,8 @@
 		public done: boolean;
 		public assignee: User;
 
-		constructor(description: string, done: boolean, assignee: User) {
+		constructor(id: string, description: string, done: boolean, assignee: User) {
+			this.id = id;
 			this.description = description;
 			this.done = done;
 			this.assignee = assignee;
@@ -130,13 +131,6 @@
 	$inspect('Tâches chargées :', todos);
 	$inspect('Utilisateurs chargés :', users);
 
-	// // Chargement initial des tâches si l'utilisateur est déjà connecté
-	// onMount(async () => {
-	// 	if (token) {
-	// 		await fetchTasks();
-	// 	}
-	// });
-
 	// Fonction de connexion qui envoie les identifiants à l'API et stocke le token en cas de succès
 	async function login() {
 		try {
@@ -186,139 +180,121 @@
 			console.error('Erreur technique :', err);
 		}
 	}
-	// // Fonction de déconnexion qui nettoie le token et les données utilisateur
-	// function logout() {
-	// 	localStorage.removeItem('keystone_token');
-	// 	localStorage.removeItem('user_id');
-	// 	token = '';
-	// 	todos = [];
-	// }
+	// Fonction de déconnexion qui supprime le token du localStorage et réinitialise les états
+	function logout() {
+		localStorage.removeItem('keystone_token');
+		localStorage.removeItem('user_id');
+		token = null;
+		todos = [];
+		users = [];
+		me = null;
+	}
 
-	// // Fonctions pour interagir avec l'API GraphQL pour les tâches (fetch, toggle, add, update, remove)
-	// async function fetchTasks() {
-	// 	loading = true;
-	// 	try {
-	// 		const response = await fetch(API_URL, {
-	// 			method: 'POST',
-	// 			headers: {
-	// 				'Content-Type': 'application/json',
-	// 				Authorization: `Bearer ${token}`
-	// 			},
-	// 			body: JSON.stringify({
-	// 				query: `query { tasks { id label isComplete assignedTo { id name } } }`
-	// 			})
-	// 		});
-	// 		const result = await response.json();
-	// 		return result.data.tasks;
-	// 	} finally {
-	// 		loading = false;
-	// 	}
-	// }
-	// async function toggle(todo) {
-	// 	todo.done = !todo.done;
-	// 	await fetch(API_URL, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			Authorization: `Bearer ${token}`
-	// 		},
-	// 		body: JSON.stringify({
-	// 			query: `mutation UpdateTask($id: ID!, $done: Boolean!) {
-	// 		updateTask(where: { id: $id }, data: { isComplete: $done }) { id }
-	//     }`,
-	// 			variables: { id: todo.id, done: todo.done }
-	// 		})
-	// 	});
-	// }
+	function add() {
+		if (!newTaskLabel) return;
+		fetch(API_URL, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				query: `mutation 
+					CreateTask($label: String!,  $userId: ID) {
+						createTask(data: { label: $label, isComplete: false, assignedTo: { connect: { id: $userId } } }) {
+							id 
+							label 
+							isComplete 
+							assignedTo { name }
+						}
+					}`,
+				variables: {
+					label: newTaskLabel,
+					userId: newTaskUser || null
+				}
+			})
+		});
+		// Rafraichissement de la liste des tâches après l'ajout
+		GetTasks(token).then((newTodos) => {
+			todos = newTodos;
+			newTaskLabel = '';
+		});
+	}
 
-	// async function add() {
-	// 	if (!newTaskLabel) return;
-	// 	const response = await fetch(API_URL, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			Authorization: `Bearer ${token}`
-	// 		},
-	// 		body: JSON.stringify({
-	// 			query: `mutation CreateTask($label: String!,  $userId: ID) {
-	// 			createTask(data: { label: $label, isComplete: false, assignedTo: { connect: { id: $userId } } }) {
-	//         id label isComplete assignedTo { name }
-	// 		}
-	//     }`,
-	// 			variables: {
-	// 				label: newTaskLabel,
-	// 				userId: newTaskUser || null
-	// 			}
-	// 		})
-	// 	});
-	// 	const result = await response.json();
-	// 	const newTask = result.data?.createTask;
-	// 	if (newTask) {
-	// 		todos = [
-	// 			...todos,
-	// 			{
-	// 				id: newTask.id,
-	// 				done: newTask.isComplete,
-	// 				description: newTask.label,
-	// 				assignee: newTask.assignedTo?.name
-	// 			}
-	// 		];
-	// 		newTaskLabel = '';
-	// 	}
-	// }
+	function remove(todo) {
+		fetch(API_URL, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				query: `mutation { deleteTask(where: { id: "${todo.id}" }) { id } }`
+			})
+		});
+		// Rafraichissement de la liste des tâches après la suppression
+		GetTasks(token).then((newTodos) => {
+			todos = newTodos;
+		});
+	}
 
-	// async function update(todo) {
-	// 	const newLabel = prompt('Nouvelle description', todo.description);
-	// 	if (newLabel === null) return; // Annulé
-	// 	todo.description = newLabel;
-	// 	await fetch(API_URL, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			Authorization: `Bearer ${token}`
-	// 		},
-	// 		body: JSON.stringify({
-	// 			query: `mutation UpdateTask($id: ID!, $label: String!) {
-	// 		updateTask(where: { id: $id }, data: { label: $label }) { id }
-	// 	}`,
-	// 			variables: { id: todo.id, label: todo.description }
-	// 		})
-	// 	});
-	// }
+	function toggle(todo) {
+		fetch(API_URL, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				query: `mutation ToggleTask($id: ID!, $done: Boolean!) {
+					updateTask(where: { id: $id }, data: { isComplete: $done }) { id }
+				}`,
+				variables: { id: todo.id, done: !todo.done }
+			})
+		});
+		// Rafraichissement de la liste des tâches après le toggle
+		GetTasks(token).then((newTodos) => {
+			todos = newTodos;
+		});
+	}
 
-	// async function remove(todo) {
-	// 	await fetch(API_URL, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			Authorization: `Bearer ${token}`
-	// 		},
-	// 		body: JSON.stringify({
-	// 			query: `mutation { deleteTask(where: { id: "${todo.id}" }) { id } }`
-	// 		})
-	// 	});
-	// 	todos = todos.filter((t) => t.id !== todo.id);
-	// }
+	function update(id, data) {
+		fetch(API_URL, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
+					updateTask(where: { id: $id }, data: $data) { id }
+				}`,
+				variables: { id, data }
+			})
+		});
+		// Rafraichissement de la liste des tâches après la mise à jour
+		GetTasks(token).then((newTodos) => {
+			todos = newTodos;
+		});
+	}
 
-	// // Fonction pour mettre à jour le mot de passe de l'utilisateur connecté
-	// async function updateMyPassword() {
-	// 	const userId = localStorage.getItem('user_id');
-	// 	await fetch(API_URL, {
-	// 		method: 'POST',
-	// 		headers: {
-	// 			'Content-Type': 'application/json',
-	// 			Authorization: `Bearer ${token}`
-	// 		},
-	// 		body: JSON.stringify({
-	// 			query: `mutation($id: ID!, $password: String!) {
-	// 		updateUser(where: { id: $id }, data: { password: $password }) { id }
-	//     }`,
-	// 			variables: { id: userId, password: newPassword }
-	// 		})
-	// 	});
-	// 	showPassModal = false;
-	// 	newPassword = '';
-	// }
+	function updatePassword() {
+		if (!newPassword) return;
+		fetch(API_URL, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				Authorization: `Bearer ${token}`
+			},
+			body: JSON.stringify({
+				query: `mutation UpdatePassword($id: ID!, $password: String!) {
+					updateUser(where: { id: $id }, data: { password: $password }) { id }
+				}`,
+				variables: { id: me.id, password: newPassword }
+			})
+		});
+		showPassModal = false;
+	}
 </script>
 
 {#if !isConnected}
@@ -328,4 +304,40 @@
 		<input type="password" placeholder="Mot de passe" bind:value={password} />
 		<button onclick={login}>Se connecter</button>
 	</div>
+{:else}
+	<div class="app-container">
+		<header>
+			<h1>Ma Todo List</h1>
+			<div class="user-info">
+				<span>Connecté en tant que {me.name}</span>
+				<button onclick={() => (showPassModal = true)}>Changer de mot de passe</button>
+				<button onclick={logout}>Déconnexion</button>
+			</div>
+		</header>
+		<main>
+			<div class="add-task">
+				<input type="text" placeholder="Nouvelle tâche..." bind:value={newTaskLabel} />
+				<select bind:value={newTaskUser}>
+					<option value="">Assigner à...</option>
+					{#each users as user}
+						<option value={user.id}>{user.name}</option>
+					{/each}
+				</select>
+				<button onclick={add}>Ajouter</button>
+			</div>
+
+			<TodoList {todos} {users} {toggle} {remove} {update} />
+		</main>
+	</div>
+
+	{#if showPassModal}
+		<div class="modal">
+			<div class="modal-content">
+				<h3>Changer de mot de passe</h3>
+				<input type="password" placeholder="Nouveau mot de passe" bind:value={newPassword} />
+				<button onclick={updatePassword}>Valider</button>
+				<button onclick={() => (showPassModal = false)}>Annuler</button>
+			</div>
+		</div>
+	{/if}
 {/if}

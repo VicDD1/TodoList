@@ -1,7 +1,7 @@
 <script>
 	import { flip } from 'svelte/animate';
 
-	let { todos, remove, toggle, updateTask, users } = $props();
+	let { todos, remove, toggle, update, users } = $props();
 
 	let editingId = $state(null);
 
@@ -16,13 +16,13 @@
 	}
 
 	async function saveFullEdit(id) {
-		await updateTask(id, editValues);
+		await update(id, editValues);
 		editingId = null;
 	}
 </script>
 
-// Ce composant affiche la liste des tâches et gère les interactions de base (toggle, suppression,
-édition).
+<!-- Ce composant affiche la liste des tâches et gère les interactions de base (toggle, suppression,
+édition). -->
 
 <ul class="todos">
 	{#each todos as todo (todo.id)}
