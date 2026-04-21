@@ -132,131 +132,73 @@
 		return userData ? new User(userData.name, userData.email) : null;
 	}
 
-	$inspect('Token actuel :', token);
-	$inspect('Utilisateur connecté :', me);
-	$inspect('Tâches chargées :', todos);
-	$inspect('Utilisateurs chargés :', users);
-
-	// // Fonction de connexion qui envoie les identifiants à l'API et stocke le token en cas de succès
-	// async function login() {
-	// 	try {
-	// 		const response = await fetch(API_URL, {
-	// 			method: 'POST',
-	// 			headers: { 'Content-Type': 'application/json' },
-	// 			body: JSON.stringify({
-	// 				query: `
-	//         mutation($email: String!, $password: String!) {
-	// 		authenticateUserWithPassword(email: $email, password: $password) {
-	//             ... on UserAuthenticationWithPasswordSuccess {
-	// 				sessionToken
-	// 			item {
-	//                 id
-	//                 name
-	//                 email
-	// 				}
-	//             }
-	//             ... on UserAuthenticationWithPasswordFailure {
-	// 				message
-	//             }
-	// 		}
-	//         }`,
-	// 				variables: { email: email, password: password }
-	// 			})
-	// 		});
-
-	// 		const result = await response.json();
-
-	// 		if (result.errors) {
-	// 			console.error("Détail de l'erreur serveur :", result.errors);
-	// 			alert('Erreur serveur : ' + result.errors[0].message);
-	// 			return;
-	// 		}
-
-	// 		const auth = result.data.authenticateUserWithPassword;
-
-	// 		if (auth.sessionToken) {
-	// 			token = auth.sessionToken;
-	// 		} else {
-	// 			alert(auth.message || 'Email ou mot de passe incorrect');
-	// 		}
-	// 	} catch (err) {
-	// 		console.error('Erreur technique :', err);
-	// 	}
-	// }
-	// Fonction de déconnexion qui met à jour le token
+	// Fonction de déconnexion qui met à null le token
 	function logout() {
 		token = null;
 	}
 
-	async function add() {
-		if (!newTaskLabel) return;
-		fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				query: `mutation 
-					CreateTask($label: String!,  $userId: ID) {
-						createTask(data: { label: $label, isComplete: false, assignedTo: { connect: { id: $userId } } }) {
-							id 
-							label 
-							isComplete 
-							assignedTo { name }
-						}
+	async function UpdateList(action: string, todo?: Todo, data?: any, id?: string) {
+		if (action == 'add') {
+			if (!newTaskLabel) return;
+			fetch(API_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({
+					query: `mutation 
+						CreateTask($label: String!,  $userId: ID) {
+							createTask(data: { label: $label, isComplete: false, assignedTo: { connect: { id: $userId } } }) {
+								id 
+								label 
+								isComplete 
+								assignedTo { name }
+							}
+						}`,
+					variables: {
+						label: newTaskLabel,
+						userId: newTaskUser || null
+					}
+				})
+			});
+		} else if (action == 'remove') {
+			fetch(API_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({
+					query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
+					variables: { id: todo.id }
+				})
+			});
+		} else if (action == 'update' || action == 'toggle') {
+			fetch(API_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({
+					query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
+						updateTask(where: { id: $id }, data: $data) { id }
 					}`,
-				variables: {
-					label: newTaskLabel,
-					userId: newTaskUser || null
-				}
-			})
-		});
-		// Rafraichissement de la liste des tâches après l'ajout
+					variables: { id, data }
+				})
+			});
+		} else {
+			console.error('Action inconnue :', action);
+			return;
+		}
 		dependency.num++;
 	}
 
-	async function remove(todo) {
-		fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
-				variables: { id: todo.id }
-			})
-		});
-		// Rafraichissement de la liste des tâches après la suppression
-		GetTasks(token).then((newTodos) => {
-			todos = newTodos;
-		});
-	}
-
-	function toggle(todo: Todo) {
-		return update(todo.id, { isComplete: !todo.done });
-	}
-
-	async function update(id, data) {
-		fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
-					updateTask(where: { id: $id }, data: $data) { id }
-				}`,
-				variables: { id, data }
-			})
-		});
-		// Rafraichissement de la liste des tâches après la mise à jour
-		GetTasks(token).then((newTodos) => {
-			todos = newTodos;
-		});
-	}
+	$inspect('Token actuel :', token);
+	$inspect('Utilisateur connecté :', me);
+	$inspect('Tâches chargées :', todos);
+	$inspect('Utilisateurs chargés :', users);
 </script>
 
 {#if !isConnected}
@@ -274,10 +216,10 @@
 						<option value={user.id}>{user.name}</option>
 					{/each}
 				</select>
-				<button onclick={add}>Ajouter</button>
+				<button onclick={(e: any) => UpdateList('add')}>Ajouter</button>
 			</div>
 
-			<TodoList {todos} {users} {toggle} {remove} {update} />
+			<TodoList {todos} {users} onUpdateList={UpdateList} />
 		</main>
 	</div>
 {/if}
