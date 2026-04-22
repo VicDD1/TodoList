@@ -5,7 +5,8 @@
 		public email: string;
 		public todoIds: string[];
 
-		constructor(name: string, email: string, todoIds: string[] = []) {
+		constructor(id: string, name: string, email: string, todoIds: string[] = []) {
+			this.id = id;
 			this.name = name;
 			this.email = email;
 			this.todoIds = todoIds;
@@ -29,10 +30,6 @@
 			this.assigneeId = assigneeID;
 		}
 
-		getAssignee(users: User[]) {
-			return users.find((user) => user.id == this.assigneeId);
-		}
-
 		toString() {
 			return this.description;
 		}
@@ -52,26 +49,27 @@
 		else localStorage.removeItem('keystonejs-session');
 	});
 
-	let dependency = $state({ num: 0 });
+	let dependency = $state(1);
 	$effect(() => {
-		setInterval(() => dependency.num++, 30_000);
+		setInterval(() => dependency++, 30_000);
 	});
 	// State global de l'application
 
-	let todos: Todo[] = $derived(dependency && (await GetTasks(token)));
-	let users: User[] = $derived(dependency && (await GetUsers(token)));
+	let todos: Todo[] = $derived(await GetTasks(token));
+	let users: User[] = $derived(await GetUsers(token));
 
-	let me: User | null = $derived(dependency && (await getAuthedUser(token)));
+	let me: User | null = $derived(await getAuthedUser(token));
 	let isConnected: boolean = $derived(!!me);
 
 	let email: string = $state('');
 	let password: string = $state('');
 
 	let newTaskLabel: string = $state('');
-	let newTaskUser: string = $state('');
+	let newTaskUser: string = $state(null);
 
 	//Recupération des tâches et des utilisateurs depuis l'API GraphQL en utilisant le token pour l'authentification
 	async function GetTasks(token: string): Promise<Todo[]> {
+		dependency;
 		if (!token) return [];
 		const response = await fetch(API_URL, {
 			method: 'POST',
@@ -91,6 +89,7 @@
 	}
 
 	async function GetUsers(token: string): Promise<User[]> {
+		dependency;
 		if (!token) return [];
 		const response = await fetch(API_URL, {
 			method: 'POST',
@@ -107,6 +106,7 @@
 		return data.users.map(
 			(u) =>
 				new User(
+					u.id,
 					u.name,
 					u.email,
 					u.tasks.map((task) => task.id)
@@ -116,6 +116,7 @@
 
 	// Fonction pour verifier la validité du token et récupérer les infos utilisateur
 	async function getAuthedUser(token: string | null) {
+		dependency;
 		if (!token) return null;
 		const response = await fetch(API_URL, {
 			method: 'POST',
@@ -129,7 +130,7 @@
 		});
 		const result = await response.json();
 		const userData = result.data?.authenticatedItem;
-		return userData ? new User(userData.name, userData.email) : null;
+		return userData ? new User(userData.id, userData.name, userData.email) : null;
 	}
 
 	// Fonction de déconnexion qui met à null le token
@@ -138,16 +139,17 @@
 	}
 
 	async function UpdateList(action: string, todo?: Todo, data?: any, id?: string) {
-		if (action == 'add') {
-			if (!newTaskLabel) return;
-			fetch(API_URL, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify({
-					query: `mutation 
+		switch (action) {
+			case 'add':
+				console.log('Adding task:', newTaskLabel, 'assigned to user ID:', newTaskUser);
+				fetch(API_URL, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`
+					},
+					body: JSON.stringify({
+						query: `mutation 
 						CreateTask($label: String!,  $userId: ID) {
 							createTask(data: { label: $label, isComplete: false, assignedTo: { connect: { id: $userId } } }) {
 								id 
@@ -156,49 +158,67 @@
 								assignedTo { name }
 							}
 						}`,
-					variables: {
-						label: newTaskLabel,
-						userId: newTaskUser || null
-					}
-				})
-			});
-		} else if (action == 'remove') {
-			fetch(API_URL, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify({
-					query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
-					variables: { id: todo.id }
-				})
-			});
-		} else if (action == 'update' || action == 'toggle') {
-			fetch(API_URL, {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${token}`
-				},
-				body: JSON.stringify({
-					query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
+						variables: {
+							label: newTaskLabel,
+							userId: newTaskUser || null
+						}
+					})
+				});
+				break;
+			case 'remove':
+				try {
+					fetch(API_URL, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json',
+							Authorization: `Bearer ${token}`
+						},
+						body: JSON.stringify({
+							query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
+							variables: { id: todo.id }
+						})
+					});
+				} catch (e) {
+					console.error('Error deleting task:', e);
+				}
+				break;
+			case 'update':
+				fetch(API_URL, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`
+					},
+					body: JSON.stringify({
+						query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
 						updateTask(where: { id: $id }, data: $data) { id }
 					}`,
-					variables: { id, data }
-				})
-			});
-		} else {
-			console.error('Action inconnue :', action);
-			return;
+						variables: { id, data }
+					})
+				});
+			case 'toggle':
+				fetch(API_URL, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+						Authorization: `Bearer ${token}`
+					},
+					body: JSON.stringify({
+						query: `mutation ToggleTask($id: ID!, $isComplete: Boolean!) {
+						updateTask(where: { id: $id }, data: { isComplete: $isComplete }) { id }
+					}`,
+						variables: { id, isComplete: data.done }
+					})
+				});
 		}
-		dependency.num++;
+		dependency++;
 	}
 
 	$inspect('Token actuel :', token);
 	$inspect('Utilisateur connecté :', me);
 	$inspect('Tâches chargées :', todos);
 	$inspect('Utilisateurs chargés :', users);
+	$inspect('dependency :', dependency);
 </script>
 
 {#if !isConnected}
@@ -209,14 +229,33 @@
 
 		<main>
 			<div class="add-task">
-				<input type="text" placeholder="Nouvelle tâche..." bind:value={newTaskLabel} />
+				<input
+					type="text"
+					placeholder="Nouvelle tâche"
+					bind:value={newTaskLabel}
+					onkeypress={(e) => {
+						if (e.key === 'Enter') {
+							UpdateList('add');
+							newTaskLabel = '';
+							newTaskUser = null;
+						}
+					}}
+				/>
 				<select bind:value={newTaskUser}>
-					<option value="">Assigner à...</option>
+					<option value="">Aucun</option>
 					{#each users as user}
 						<option value={user.id}>{user.name}</option>
 					{/each}
 				</select>
-				<button onclick={(e: any) => UpdateList('add')}>Ajouter</button>
+				<button
+					onclick={() => {
+						UpdateList('add');
+						newTaskLabel = '';
+						newTaskUser = null;
+					}}
+				>
+					Ajouter
+				</button>
 			</div>
 
 			<TodoList {todos} {users} onUpdateList={UpdateList} />
