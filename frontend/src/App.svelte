@@ -23,7 +23,7 @@
 		public done: boolean;
 		public assigneeId?: string;
 
-		constructor(id: string, description: string, done: boolean, assigneeID?: string) {
+		constructor(id: string, description: string, done: boolean, assigneeID: string) {
 			this.id = id;
 			this.description = description;
 			this.done = done;
@@ -142,7 +142,8 @@
 	async function UpdateList(action: string, todo?: Todo, data?: any, id?: string) {
 		switch (action) {
 			case 'add':
-				console.log('Adding task:', newTaskLabel, 'assigned to user ID:', newTaskUser);
+				let newtodo = new Todo(crypto.randomUUID(), newTaskLabel, false, newTaskUser || null);
+				console.log('Adding task:', newtodo);
 				fetch(API_URL, {
 					method: 'POST',
 					headers: {
@@ -150,18 +151,18 @@
 						Authorization: `Bearer ${token}`
 					},
 					body: JSON.stringify({
-						query: `mutation 
-						CreateTask($label: String!,  $userId: ID) {
-							createTask(data: { label: $label, isComplete: false, assignedTo: { connect: { id: $userId } } }) {
-								id 
-								label 
-								isComplete 
-								assignedTo { name }
-							}
-						}`,
+						query: `mutation CreateTask($label: String!, $isComplete: Boolean!, $userId: ID) {
+						createTask(data: { label: $label, isComplete: $isComplete, assignedTo: { connect: { id: $userId } } }) {
+							id 
+							label 
+							isComplete 
+							assignedTo { name }
+						}
+					}`,
 						variables: {
-							label: newTaskLabel,
-							userId: newTaskUser || null
+							label: newtodo.description,
+							isComplete: newtodo.done,
+							userId: newtodo.assigneeId
 						}
 					})
 				});
@@ -203,7 +204,7 @@
 							id: todo.id,
 							label: data.description,
 							isComplete: data.done,
-							userId: data.assigneeId || null
+							userId: data.assigneeId
 						}
 					})
 				});
@@ -235,29 +236,24 @@
 
 		<main>
 			<div class="add-task">
-				<input
-					type="text"
-					placeholder="Nouvelle tâche"
-					bind:value={newTaskLabel}
-					onkeypress={(e) => {
-						if (e.key === 'Enter') {
-							UpdateList('add');
-							newTaskLabel = '';
-							newTaskUser = null;
-						}
-					}}
-				/>
+				<input type="text" placeholder="Nouvelle tâche" bind:value={newTaskLabel} />
+				<p>Asigné à :</p>
 				<select bind:value={newTaskUser}>
-					<option value="">Aucun</option>
 					{#each users as user}
 						<option value={user.id}>{user.name}</option>
 					{/each}
 				</select>
 				<button
 					onclick={() => {
-						UpdateList('add');
-						newTaskLabel = '';
-						newTaskUser = null;
+						if (newTaskLabel != '' && newTaskUser != '') {
+							UpdateList('add', null, { description: newTaskLabel, assigneeId: newTaskUser });
+							newTaskLabel = '';
+							newTaskUser = '';
+						} else {
+							alert(
+								'Veuillez entrer une description et sélectionner un utilisateur pour la tâche.'
+							);
+						}
 					}}
 				>
 					Ajouter

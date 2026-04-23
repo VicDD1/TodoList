@@ -33,8 +33,8 @@
 				<div class="edit-form">
 					<input type="text" bind:value={todo.description} />
 					<select bind:value={todo.assigneeId}>
-						<option value="">Aucun</option>
-						{#each users as user}
+						<option value={users[0].id}>{users[0].name}</option>
+						{#each users.slice(1) as user}
 							<option value={user.id}>{user.name}</option>
 						{/each}
 					</select>
@@ -95,17 +95,6 @@
 		font-size: 1rem;
 		color: #1f2937;
 		transition: color 0.3s;
-	}
-
-	/* Style quand la tâche est terminée */
-	li.done {
-		background-color: #f3f4f6;
-		border-color: #e5e7eb;
-	}
-
-	li.done .label {
-		text-decoration: line-through;
-		color: #9ca3af;
 	}
 
 	/* Badge pour la personne assignée */
