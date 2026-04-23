@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { type Todo } from './App.svelte';
 
-	let { todos, users, onUpdateList } = $props();
+	let { todos, users, onUpdateList, isEditing = $bindable() } = $props();
 
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
@@ -27,8 +27,29 @@
 			<div class="task-actions">
 				<button onclick={() => onUpdateList('remove', todo)}>Supprimer</button>
 			</div>
-			<!--sur le clic on affich un formulaire de modification-->
-			<button> Modifier </button>
+			<!--sur le clic on affiche un formulaire de modification-->
+
+			{#if isEditing}
+				<div class="edit-form">
+					<input type="text" bind:value={todo.description} />
+					<select bind:value={todo.assigneeId}>
+						<option value="">Aucun</option>
+						{#each users as user}
+							<option value={user.id}>{user.name}</option>
+						{/each}
+					</select>
+					<button
+						onclick={() => {
+							onUpdateList(
+								'update',
+								todo,
+								{ description: todo.description, assigneeId: todo.assigneeId },
+								todo.id
+							);
+						}}>Enregistrer</button
+					>
+				</div>
+			{/if}
 		</li>
 	{/each}
 </ul>

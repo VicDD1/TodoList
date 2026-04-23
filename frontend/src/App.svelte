@@ -66,6 +66,7 @@
 
 	let newTaskLabel: string = $state('');
 	let newTaskUser: string = $state(null);
+	let isEditing = $state(false);
 
 	//Recupération des tâches et des utilisateurs depuis l'API GraphQL en utilisant le token pour l'authentification
 	async function GetTasks(token: string): Promise<Todo[]> {
@@ -219,6 +220,7 @@
 	$inspect('Tâches chargées :', todos);
 	$inspect('Utilisateurs chargés :', users);
 	$inspect('dependency :', dependency);
+	$inspect('isEditing :', isEditing);
 </script>
 
 {#if !isConnected}
@@ -258,7 +260,13 @@
 				</button>
 			</div>
 
-			<TodoList {todos} {users} onUpdateList={UpdateList} />
+			<TodoList {todos} {users} onUpdateList={UpdateList} bind:isEditing />
+
+			{#if !isEditing}
+				<button onclick={() => (isEditing = !isEditing)}> Modifier les tâches </button>
+			{:else}
+				<button onclick={() => (isEditing = !isEditing)}> Terminer la modification </button>
+			{/if}
 		</main>
 	</div>
 {/if}
