@@ -27,6 +27,8 @@
 			<div class="task-actions">
 				<button onclick={() => onUpdateList('remove', todo)}>Supprimer</button>
 			</div>
+			<!--sur le clic on affich un formulaire de modification-->
+			<button> Modifier </button>
 		</li>
 	{/each}
 </ul>
