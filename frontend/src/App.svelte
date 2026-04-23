@@ -184,9 +184,6 @@
 				}
 				break;
 			case 'update':
-				//on créer un todo pour voir ce qu'il y a dans le todo pour le debug
-				const updatedTodo = new Todo(todo.id, data.description, todo.done, data.assigneeId);
-				console.log('Updating task:', updatedTodo);
 				fetch(API_URL, {
 					method: 'POST',
 					headers: {
@@ -194,12 +191,23 @@
 						Authorization: `Bearer ${token}`
 					},
 					body: JSON.stringify({
-						query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
-						updateTask(where: { id: $id }, data: $data) { id }
+						query: `mutation UpdateTask($id: ID!, $label: String, $isComplete: Boolean, $userId: ID) {
+						updateTask(where: { id: $	id }, data: { label: $label, isComplete: $isComplete, assignedTo: { connect: { id: $userId } } }) {
+							id 
+							label 
+							isComplete 
+							assignedTo { name }
+						}
 					}`,
-						variables: { id, data }
+						variables: {
+							id: todo.id,
+							label: data.description,
+							isComplete: data.done,
+							userId: data.assigneeId || null
+						}
 					})
 				});
+
 			case 'toggle':
 				fetch(API_URL, {
 					method: 'POST',
@@ -217,13 +225,6 @@
 		}
 		dependency++;
 	}
-
-	$inspect('Token actuel :', token);
-	$inspect('Utilisateur connecté :', me);
-	$inspect('Tâches chargées :', todos);
-	$inspect('Utilisateurs chargés :', users);
-	$inspect('dependency :', dependency);
-	$inspect('isEditing :', isEditing);
 </script>
 
 {#if !isConnected}
@@ -273,3 +274,105 @@
 		</main>
 	</div>
 {/if}
+
+<style>
+	/* Variables de couleurs pour une maintenance facile */
+	:root {
+		--primary-color: #4f46e5;
+		--primary-hover: #4338ca;
+		--bg-color: #f9fafb;
+		--card-bg: #ffffff;
+		--text-main: #1f2937;
+		--text-muted: #6b7280;
+		--border-color: #e5e7eb;
+		--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+	}
+
+	main {
+		max-width: 600px;
+		margin: 2rem auto;
+		padding: 2rem;
+		background-color: var(--card-bg);
+		border-radius: 12px;
+		box-shadow: var(--shadow);
+		font-family:
+			'Inter',
+			system-ui,
+			-apple-system,
+			sans-serif;
+	}
+
+	/* Conteneur d'ajout de tâche */
+	.add-task {
+		display: flex;
+		gap: 10px;
+		margin-bottom: 2rem;
+		padding-bottom: 1.5rem;
+		border-bottom: 2px solid var(--bg-color);
+	}
+
+	/* Champs de saisie et Select */
+	input[type='text'],
+	select {
+		padding: 0.6rem 1rem;
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		font-size: 0.95rem;
+		transition:
+			border-color 0.2s,
+			box-shadow 0.2s;
+	}
+
+	input[type='text'] {
+		flex-grow: 2; /* Le champ texte prend plus de place */
+	}
+
+	select {
+		flex-grow: 1;
+		background-color: white;
+		cursor: pointer;
+	}
+
+	input:focus,
+	select:focus {
+		outline: none;
+		border-color: var(--primary-color);
+		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+	}
+
+	/* Boutons */
+	button {
+		padding: 0.6rem 1.2rem;
+		background-color: var(--primary-color);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			background-color 0.2s,
+			transform 0.1s;
+	}
+
+	button:hover {
+		background-color: var(--primary-hover);
+	}
+
+	button:active {
+		transform: scale(0.98);
+	}
+
+	/* Bouton spécifique pour le mode édition (en bas) */
+	main > button {
+		width: 100%;
+		margin-top: 1.5rem;
+		background-color: transparent;
+		color: var(--primary-color);
+		border: 2px solid var(--primary-color);
+	}
+
+	main > button:hover {
+		background-color: var(--primary-color);
+		color: white;
+	}
+</style>
