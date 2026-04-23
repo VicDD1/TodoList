@@ -184,6 +184,9 @@
 				}
 				break;
 			case 'update':
+				//on créer un todo pour voir ce qu'il y a dans le todo pour le debug
+				const updatedTodo = new Todo(todo.id, data.description, todo.done, data.assigneeId);
+				console.log('Updating task:', updatedTodo);
 				fetch(API_URL, {
 					method: 'POST',
 					headers: {
