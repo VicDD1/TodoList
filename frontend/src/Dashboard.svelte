@@ -37,9 +37,12 @@
 </script>
 
 <script lang="ts">
+	import editIcon from './edit.svg';
+	import doneIcon from './done.svg';
 	import TodoList from './TodoList.svelte';
 	import Header from './Header.svelte';
 	import Conexion from './Conexion.svelte';
+	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
 
 	const API_URL = 'http://localhost:3000/api/graphql';
 
@@ -69,6 +72,8 @@
 	let newTaskUser: string = $state(null);
 	let isEditing = $state(false);
 	let createTaskError = $state(null);
+	let updateTaskError = $state(null);
+	let removeTaskError = $state(null);
 
 	async function getData(token: string) {
 		dependency.todo;
@@ -103,134 +108,82 @@
 		};
 	}
 
-	//Recupération des tâches et des utilisateurs depuis l'API GraphQL en utilisant le token pour l'authentification
-	async function GetTasks(token: string): Promise<Todo[]> {
-		dependency.todo;
-		if (!token) return [];
-		const response = await fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				query: `query { tasks { id label isComplete assignedTo { id } } }`
-			})
-		});
-		const { data, errors } = await response.json();
-		if (errors) throw errors;
-		return data.tasks.map(
-			(task) => new Todo(task.id, task.label, task.isComplete, task.assignedTo?.id)
-		);
-	}
-
-	async function GetUsers(token: string): Promise<User[]> {
-		dependency.user;
-		if (!token) return [];
-		const response = await fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				query: `query { users { id name email tasks { id } } }`
-			})
-		});
-		const { data, errors } = await response.json();
-		if (errors) throw errors;
-		return data.users.map(
-			(u) =>
-				new User(
-					u.id,
-					u.name,
-					u.email,
-					u.tasks.map((task) => task.id)
-				)
-		);
-	}
-
-	// Fonction pour verifier la validité du token et récupérer les infos utilisateur
-	async function getAuthedUser(token: string | null) {
-		dependency.auth;
-		if (!token) return null;
-		const response = await fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({
-				query: `query { authenticatedItem { ... on User { id name email } } }`
-			})
-		});
-		const result = await response.json();
-		const userData = result.data?.authenticatedItem;
-		return userData ? new User(userData.id, userData.name, userData.email) : null;
-	}
-
 	// Fonction de déconnexion qui met à null le token
 	function logout() {
 		token = null;
 	}
 
-	async function addTask() {
-		await gqlQuery({
-			token,
-			query: `mutation CreateTask($input: TaskCreateInput!) {
-						createTask(data: $input) {
-							id
-							label
-							isComplete
-							assignedTo { name }
-						}
-					}`,
-			variables: {
-				input: {
-					label: newTaskLabel,
-					isComplete: false,
-					assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : undefined
-				}
-			}
-		});
-	}
+	async function addTask(newTaskLabel: string, newTaskUser: string) {
+		if (newTaskLabel == '' || newTaskUser == '')
+			createTaskError = new Error(
+				'Veuillez entrer une description et sélectionner un utilisateur pour la tâche.'
+			);
 
-	async function removeTask(todo: Todo) {
-		await gqlQuery({
-			token,
-			query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
-			variables: { id: todo.id }
-		});
-	}
-
-	async function UpdateTask(action: string, todo?: Todo) {
-		switch (action) {
-			case 'update':
-				await gqlQuery({
-					token,
-					query: `mutation UpdateTask($id: ID!, $label: String, $isComplete: Boolean, $userId: ID) {
-							updateTask(where: { id: $	id }, data: { label: $label, isComplete: $isComplete, assignedTo: { connect: { id: $userId } } }) {
-								id 
-								label 
-								isComplete 
+		try {
+			await gqlQuery2({
+				token,
+				query: `mutation CreateTask($input: TaskCreateInput!) {
+							createTask(data: $input) {
+								id
+								label
+								isComplete
 								assignedTo { name }
 							}
 						}`,
-					variables: {
-						id: todo.id,
-						label: todo.description,
-						isComplete: todo.done,
-						userId: todo.assigneeId
+				variables: {
+					input: {
+						label: newTaskLabel,
+						isComplete: false,
+						assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : undefined
 					}
-				});
-
-				break;
-			case 'toggle':
-				todo.done = !todo.done;
-				await UpdateTask('update', todo);
-				break;
+				}
+			});
+		} catch (error) {
+			createTaskError = error;
 		}
-		dependency.todo++;
+	}
+
+	async function removeTask(todo: Todo) {
+		try {
+			await gqlQuery2({
+				token,
+				query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
+				variables: { id: todo.id }
+			});
+		} catch (error) {
+			removeTaskError = error;
+		}
+	}
+
+	async function UpdateTask(todo?: Todo) {
+		try {
+			await gqlQuery2({
+				token,
+				query: `mutation UpdateTask($id: ID!, $label: String, $isComplete: Boolean, $userId: ID) {
+					updateTask(where: { id: $	id }, data: { label: $label, isComplete: $isComplete, assignedTo: { connect: { id: $userId } } }) {
+						id 
+						label 
+						isComplete 
+						assignedTo { name }
+					}
+				}`,
+				variables: {
+					id: todo.id,
+					label: todo.description,
+					isComplete: todo.done,
+					userId: todo.assigneeId
+				}
+			});
+		} catch (error) {
+			updateTaskError = error;
+		} finally {
+			dependency.todo++;
+		}
+	}
+
+	function ToggleTask(todo: Todo) {
+		todo.done = !todo.done;
+		return UpdateTask(todo);
 	}
 
 	async function gqlQuery<T>({
@@ -242,17 +195,57 @@
 		query: string;
 		variables?: any;
 	}): Promise<T> {
-		const response = await fetch(API_URL, {
+		return fetch(API_URL, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 				Authorization: `Bearer ${token}`
 			},
 			body: JSON.stringify({ query, variables })
-		});
-		const { data, errors } = await response.json();
-		if (errors) throw errors;
-		else return data;
+		})
+			.then(
+				(response) => response.json(),
+				(error) => new Error('Netwok error', { cause: error })
+			)
+			.then(
+				({ data, errors }) => {
+					if (errors) throw new Error('API errors lol', { cause: errors });
+					else return data;
+				},
+				(error) => new Error('wtf?', { cause: error })
+			);
+	}
+
+	function gqlQuery2<T>({
+		token,
+		query,
+		variables
+	}: {
+		token: string;
+		query: string;
+		variables?: any;
+	}): AsyncResult<Error, T> {
+		return safe(() =>
+			fetch(API_URL, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${token}`
+				},
+				body: JSON.stringify({ query, variables })
+			})
+		)
+			.recover((error) => {
+				throw new Error('Netwok error', { cause: error });
+			})
+			.andThen((response) => response.json())
+			.recover((error) => {
+				throw new Error('wtf?', { cause: error });
+			})
+			.andThen(({ data, errors }) => {
+				if (errors) throw new Error('API errors lol', { cause: errors });
+				else return data;
+			});
 	}
 </script>
 
@@ -273,19 +266,10 @@
 				</select>
 				<button
 					onclick={() => {
-						if (newTaskLabel != '' && newTaskUser != '') {
-							addTask().then(
-								() => {
-									newTaskLabel = '';
-									newTaskUser = '';
-								},
-								(err) => (createTaskError = err)
-							);
-						} else {
-							createTaskError = new Error(
-								'Veuillez entrer une description et sélectionner un utilisateur pour la tâche.'
-							);
-						}
+						addTask(newTaskLabel, newTaskUser).then(() => {
+							newTaskLabel = '';
+							newTaskUser = '';
+						});
 					}}
 				>
 					Ajouter
@@ -297,17 +281,24 @@
 				{/if}
 			</div>
 
-			<TodoList {todos} {users} onUpdateList={UpdateTask} onDelete={removeTask} bind:isEditing />
+			<TodoList
+				{todos}
+				{users}
+				{isEditing}
+				onToggleTodo={(todo) => ToggleTask(todo)}
+				onUpdateTodo={(todo) => UpdateTask(todo)}
+				onDelete={removeTask}
+				bind:updateTaskError
+				bind:removeTaskError
+			/>
 
-			{#if !isEditing}
-				<button onclick={() => (isEditing = !isEditing)}>
-					<img src="edit.svg" alt="Modifier" /></button
-				>
-			{:else}
-				<button onclick={() => (isEditing = !isEditing)}>
-					<img src="done.svg" alt="Terminer la modification" />
-				</button>
-			{/if}
+			<button onclick={() => (isEditing = !isEditing)}>
+				{#if !isEditing}
+					<img src={editIcon} alt="Modifier" />
+				{:else}
+					<img src={doneIcon} alt="Terminer la modification" />
+				{/if}
+			</button>
 		</main>
 	</div>
 {/if}

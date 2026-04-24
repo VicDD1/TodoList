@@ -1,11 +1,17 @@
 <script lang="ts">
 	import { type Todo } from './Dashboard.svelte';
+	import removeIcon from './remove.svg';
 
-	let { todos, users, onUpdateList, onDelete, isEditing = $bindable() } = $props();
-
-	let editTaskError = $state(null);
-	let removeTaskError = $state(null);
-	let toggleTaskError = $state(null);
+	let {
+		todos,
+		users,
+		isEditing,
+		onUpdateTodo,
+		onToggleTodo,
+		onDelete,
+		updateTaskError = $bindable(),
+		removeTaskError = $bindable()
+	} = $props();
 
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
@@ -18,28 +24,15 @@
 	{#each todos as todo}
 		<li class:done={todo.done}>
 			<div class="task-info">
-				<input
-					type="checkbox"
-					checked={todo.done}
-					onchange={() => onUpdateList('toggle', todo).then((err) => (toggleTaskError = err))}
-				/>
-				{#if toggleTaskError}
-					<p class="error">{toggleTaskError.message}</p>
-					<button onclick={() => (toggleTaskError = null)}>ok</button>
-				{/if}
-
+				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
 				<span class="label">{todo.description}</span>
 
 				<span class="assignee">{getAssigneeName(todo)}</span>
 			</div>
 			<div class="task-actions">
-				<button onclick={() => onDelete(todo).then((err) => (removeTaskError = err))}>
-					<img src="remove.svg" alt="Supprimer" />
+				<button onclick={() => onDelete(todo)}>
+					<img src={removeIcon} alt="Supprimer" />
 				</button>
-				{#if removeTaskError}
-					<p class="error">{removeTaskError.message}</p>
-					<button onclick={() => (removeTaskError = null)}>ok</button>
-				{/if}
 			</div>
 
 			<!--sur le clic on affiche un formulaire de modification-->
@@ -53,19 +46,16 @@
 							<option value={user.id}>{user.name}</option>
 						{/each}
 					</select>
-					<button
-						onclick={() => {
-							onUpdateList('update', todo).then(
-								() => (isEditing = false),
-								(err) => (editTaskError = err)
-							);
-						}}>Enregistrer</button
-					>
-					{#if editTaskError}
-						<p class="error">{editTaskError.message}</p>
-						<button onclick={() => (editTaskError = null)}>ok</button>
-					{/if}
+					<button onclick={() => onUpdateTodo(todo)}>Enregistrer</button>
 				</div>
+			{/if}
+			{#if updateTaskError}
+				<p class="error">{updateTaskError.message}</p>
+				<button onclick={() => (updateTaskError = null)}>ok</button>
+			{/if}
+			{#if removeTaskError}
+				<p class="error">{removeTaskError.message}</p>
+				<button onclick={() => (removeTaskError = null)}>ok</button>
 			{/if}
 		</li>
 	{/each}
@@ -84,7 +74,11 @@
 		border: 1px solid #e5e7eb;
 		border-radius: 12px;
 		margin-bottom: 12px;
-		padding: 1rem;
+		padding: 0.75rem 1rem; /* On réduit un peu le padding vertical */
+		display: flex; /* Active le flex sur la ligne */
+		align-items: center; /* Aligne verticalement au centre */
+		justify-content: space-between; /* Pousse le bouton supprimer à droite */
+		gap: 15px;
 		transition:
 			transform 0.2s,
 			box-shadow 0.2s;
@@ -100,8 +94,9 @@
 		display: flex;
 		align-items: center;
 		gap: 12px;
+		flex-grow: 1; /* Prend toute la place disponible à gauche */
+		min-width: 0; /* Empêche le texte de déborder */
 	}
-
 	.task-info input[type='checkbox'] {
 		width: 18px;
 		height: 18px;
@@ -111,8 +106,9 @@
 
 	.label {
 		flex-grow: 1;
-		font-size: 1rem;
-		color: #1f2937;
+		overflow: hidden;
+		text-overflow: ellipsis; /* Coupe le texte proprement s'il est trop long */
+		white-space: nowrap;
 	}
 
 	.done .label {
@@ -129,24 +125,23 @@
 		border-radius: 20px;
 		font-weight: 600;
 		border: 1px solid #dbeafe;
+		white-space: nowrap; /* Empêche le badge de revenir à la ligne */
+		flex-shrink: 0; /* Empêche le badge de s'écraser */
 	}
 
-	/* Actions & Bouton Supprimer avec SVG */
 	.task-actions {
 		display: flex;
-		justify-content: flex-end;
-		margin-top: -25px; /* Aligne visuellement le bouton avec la ligne du haut */
+		align-items: center;
+		margin-top: 0; /* ON ENLÈVE LE MARGIN NÉGATIF ICI */
+		flex-shrink: 0;
 	}
 
 	.task-actions button {
 		background-color: #fef2f2;
 		border: 1px solid #fee2e2;
-		padding: 6px;
+		padding: 8px;
 		border-radius: 8px;
 		cursor: pointer;
-		display: flex;
-		align-items: center;
-		justify-content: center;
 		transition: all 0.2s;
 	}
 
@@ -164,7 +159,9 @@
 
 	/* Formulaire d'édition */
 	.edit-form {
+		width: 100%;
 		display: flex;
+		flex-basis: 100%;
 		flex-wrap: wrap;
 		gap: 10px;
 		margin-top: 15px;
