@@ -283,7 +283,6 @@
 							createTaskError = new Error(
 								'Veuillez entrer une description et sélectionner un utilisateur pour la tâche.'
 							);
-							setTimeout(() => (createTaskError = null), 2000);
 						}
 					}}
 				>
@@ -291,7 +290,7 @@
 				</button>
 
 				{#if createTaskError}
-					<p>{createTaskError.message}</p>
+					<p class="error">{createTaskError.message}</p>
 					<button onclick={() => (createTaskError = null)}>ok</button>
 				{/if}
 			</div>
@@ -299,9 +298,13 @@
 			<TodoList {todos} {users} onUpdateList={UpdateList} bind:isEditing />
 
 			{#if !isEditing}
-				<button onclick={() => (isEditing = !isEditing)}> Modifier les tâches </button>
+				<button onclick={() => (isEditing = !isEditing)}>
+					<img src="edit.svg" alt="Modifier" /></button
+				>
 			{:else}
-				<button onclick={() => (isEditing = !isEditing)}> Terminer la modification </button>
+				<button onclick={() => (isEditing = !isEditing)}>
+					<img src="done.svg" alt="Terminer la modification" />
+				</button>
 			{/if}
 		</main>
 	</div>
@@ -315,30 +318,38 @@
 		--card-bg: #ffffff;
 		--text-main: #1f2937;
 		--text-muted: #6b7280;
+		--error-color: #ef4444;
 		--border-color: #e5e7eb;
 		--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 	}
 
 	main {
-		max-width: 600px;
+		max-width: 700px; /* Légèrement plus large pour accommoder le nouveau contenu */
 		margin: 2rem auto;
 		padding: 2rem;
 		background-color: var(--card-bg);
 		border-radius: 12px;
 		box-shadow: var(--shadow);
-		font-family:
-			'Inter',
-			system-ui,
-			-apple-system,
-			sans-serif;
+		font-family: 'Inter', system-ui, sans-serif;
 	}
 
+	/* Conteneur d'ajout : passage en wrap pour gérer l'erreur en dessous */
 	.add-task {
 		display: flex;
-		gap: 10px;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 12px;
 		margin-bottom: 2rem;
-		padding-bottom: 1.5rem;
-		border-bottom: 2px solid var(--bg-color);
+		padding: 1.5rem;
+		background-color: var(--bg-color);
+		border-radius: 10px;
+	}
+
+	.add-task p {
+		margin: 0;
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--text-muted);
 	}
 
 	input[type='text'],
@@ -347,17 +358,15 @@
 		border: 1px solid var(--border-color);
 		border-radius: 8px;
 		font-size: 0.95rem;
-		transition:
-			border-color 0.2s,
-			box-shadow 0.2s;
+		transition: all 0.2s;
 	}
 
 	input[type='text'] {
-		flex-grow: 2; /* Le champ texte prend plus de place */
+		flex: 2 1 200px; /* Grandit, rétrécit, base de 200px */
 	}
 
 	select {
-		flex-grow: 1;
+		flex: 1 1 150px;
 		background-color: white;
 		cursor: pointer;
 	}
@@ -378,9 +387,7 @@
 		border-radius: 8px;
 		font-weight: 600;
 		cursor: pointer;
-		transition:
-			background-color 0.2s,
-			transform 0.1s;
+		transition: all 0.2s;
 	}
 
 	button:hover {
@@ -391,7 +398,19 @@
 		transform: scale(0.98);
 	}
 
-	/* Bouton spécifique pour le mode édition (en bas) */
+	/* Gestion spécifique du bloc d'erreur */
+	.error {
+		flex: 1 0 100%; /* Force le message d'erreur à prendre toute la ligne */
+		color: var(--error-color);
+		font-size: 0.85rem;
+		margin: 8px 0 0 0;
+		padding: 8px 12px;
+		background-color: #fef2f2;
+		border-left: 4px solid var(--error-color);
+		border-radius: 4px;
+	}
+
+	/* Bouton d'édition en bas */
 	main > button {
 		width: 100%;
 		margin-top: 1.5rem;

@@ -3,6 +3,7 @@
 
 	let { todos, users, onUpdateList, isEditing = $bindable() } = $props();
 
+	let editTaskError = $state(null);
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
@@ -21,7 +22,9 @@
 				<span class="assignee">{getAssigneeName(todo)}</span>
 			</div>
 			<div class="task-actions">
-				<button onclick={() => onUpdateList('remove', todo)}>Supprimer</button>
+				<button onclick={() => onUpdateList('remove', todo)}>
+					<img src="remove.svg" alt="Supprimer" />
+				</button>
 			</div>
 			<!--sur le clic on affiche un formulaire de modification-->
 
@@ -36,9 +39,16 @@
 					</select>
 					<button
 						onclick={() => {
-							onUpdateList('update', todo);
+							onUpdateList('update', todo).then(
+								() => (isEditing = false),
+								(err) => (editTaskError = err)
+							);
 						}}>Enregistrer</button
 					>
+					{#if editTaskError}
+						<p class="error">{editTaskError.message}</p>
+						<button onclick={() => (editTaskError = null)}>ok</button>
+					{/if}
 				</div>
 			{/if}
 		</li>
@@ -52,6 +62,20 @@
 		margin: 1.5rem 0;
 	}
 
+	.error {
+		flex: 1 0 100%; /* Force le message d'erreur à prendre toute la ligne */
+		color: var(--error-color);
+		font-size: 0.85rem;
+		margin: 8px 0 0 0;
+		padding: 8px 12px;
+		background-color: #fef2f2;
+		border-left: 4px solid var(--error-color);
+		border-radius: 4px;
+	}
+	.done .label {
+		text-decoration: line-through;
+		color: #9ca3af;
+	}
 	/* Style de chaque ligne de tâche */
 	li {
 		background: #ffffff;
