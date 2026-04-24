@@ -14,11 +14,7 @@
 	{#each todos as todo}
 		<li class:done={todo.done}>
 			<div class="task-info">
-				<input
-					type="checkbox"
-					checked={todo.done}
-					onchange={() => onUpdateList('toggle', todo, { ...todo, done: !todo.done })}
-				/>
+				<input type="checkbox" checked={todo.done} onchange={() => onUpdateList('toggle', todo)} />
 
 				<span class="label">{todo.description}</span>
 
@@ -40,10 +36,7 @@
 					</select>
 					<button
 						onclick={() => {
-							onUpdateList('update', todo, {
-								description: todo.description,
-								assigneeId: todo.assigneeId
-							});
+							onUpdateList('update', todo);
 						}}>Enregistrer</button
 					>
 				</div>

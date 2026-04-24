@@ -174,7 +174,7 @@
 		token = null;
 	}
 
-	async function UpdateList(action: string, todo?: Todo, data?: any) {
+	async function UpdateList(action: string, todo?: Todo) {
 		switch (action) {
 			case 'add':
 				await gqlQuery({
@@ -216,15 +216,16 @@
 						}`,
 					variables: {
 						id: todo.id,
-						label: data.description,
-						isComplete: data.done,
-						userId: data.assigneeId
+						label: todo.description,
+						isComplete: todo.done,
+						userId: todo.assigneeId
 					}
 				});
 
 				break;
 			case 'toggle':
-				await UpdateList('update', todo, { ...todo, done: !todo.done });
+				todo.done = !todo.done;
+				await UpdateList('update', todo);
 				break;
 		}
 		dependency.todo++;
@@ -271,7 +272,7 @@
 				<button
 					onclick={() => {
 						if (newTaskLabel != '' && newTaskUser != '') {
-							UpdateList('add', null, { description: newTaskLabel, assigneeId: newTaskUser }).then(
+							UpdateList('add').then(
 								() => {
 									newTaskLabel = '';
 									newTaskUser = '';
