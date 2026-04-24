@@ -307,7 +307,6 @@
 {/if}
 
 <style>
-	/* Variables de couleurs pour une maintenance facile */
 	:root {
 		--primary-color: #4f46e5;
 		--primary-hover: #4338ca;
@@ -333,7 +332,6 @@
 			sans-serif;
 	}
 
-	/* Conteneur d'ajout de tâche */
 	.add-task {
 		display: flex;
 		gap: 10px;
@@ -342,7 +340,6 @@
 		border-bottom: 2px solid var(--bg-color);
 	}
 
-	/* Champs de saisie et Select */
 	input[type='text'],
 	select {
 		padding: 0.6rem 1rem;

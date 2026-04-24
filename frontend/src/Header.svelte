@@ -16,7 +16,6 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 1rem 5%;
-		/* Utilisation des variables de notre palette */
 		background-color: #ffffff;
 		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
 		border-bottom: 1px solid #e5e7eb;

@@ -17,7 +17,7 @@
 				<input
 					type="checkbox"
 					checked={todo.done}
-					onchange={() => onUpdateList('update', todo, { done: !todo.done }, todo.id)}
+					onchange={() => onUpdateList('toggle', todo, { ...todo, done: !todo.done })}
 				/>
 
 				<span class="label">{todo.description}</span>
@@ -40,12 +40,10 @@
 					</select>
 					<button
 						onclick={() => {
-							onUpdateList(
-								'update',
-								todo,
-								{ description: todo.description, assigneeId: todo.assigneeId },
-								todo.id
-							);
+							onUpdateList('update', todo, {
+								description: todo.description,
+								assigneeId: todo.assigneeId
+							});
 						}}>Enregistrer</button
 					>
 				</div>
