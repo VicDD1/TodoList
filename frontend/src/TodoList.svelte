@@ -1,9 +1,12 @@
 <script lang="ts">
 	import { type Todo } from './Dashboard.svelte';
 
-	let { todos, users, onUpdateList, isEditing = $bindable() } = $props();
+	let { todos, users, onUpdateList, onDelete, isEditing = $bindable() } = $props();
 
 	let editTaskError = $state(null);
+	let removeTaskError = $state(null);
+	let toggleTaskError = $state(null);
+
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
@@ -15,17 +18,30 @@
 	{#each todos as todo}
 		<li class:done={todo.done}>
 			<div class="task-info">
-				<input type="checkbox" checked={todo.done} onchange={() => onUpdateList('toggle', todo)} />
+				<input
+					type="checkbox"
+					checked={todo.done}
+					onchange={() => onUpdateList('toggle', todo).then((err) => (toggleTaskError = err))}
+				/>
+				{#if toggleTaskError}
+					<p class="error">{toggleTaskError.message}</p>
+					<button onclick={() => (toggleTaskError = null)}>ok</button>
+				{/if}
 
 				<span class="label">{todo.description}</span>
 
 				<span class="assignee">{getAssigneeName(todo)}</span>
 			</div>
 			<div class="task-actions">
-				<button onclick={() => onUpdateList('remove', todo)}>
+				<button onclick={() => onDelete(todo).then((err) => (removeTaskError = err))}>
 					<img src="remove.svg" alt="Supprimer" />
 				</button>
+				{#if removeTaskError}
+					<p class="error">{removeTaskError.message}</p>
+					<button onclick={() => (removeTaskError = null)}>ok</button>
+				{/if}
 			</div>
+
 			<!--sur le clic on affiche un formulaire de modification-->
 
 			{#if isEditing}
@@ -62,36 +78,24 @@
 		margin: 1.5rem 0;
 	}
 
-	.error {
-		flex: 1 0 100%; /* Force le message d'erreur à prendre toute la ligne */
-		color: var(--error-color);
-		font-size: 0.85rem;
-		margin: 8px 0 0 0;
-		padding: 8px 12px;
-		background-color: #fef2f2;
-		border-left: 4px solid var(--error-color);
-		border-radius: 4px;
-	}
-	.done .label {
-		text-decoration: line-through;
-		color: #9ca3af;
-	}
-	/* Style de chaque ligne de tâche */
+	/* Ligne de tâche */
 	li {
 		background: #ffffff;
 		border: 1px solid #e5e7eb;
-		border-radius: 10px;
+		border-radius: 12px;
 		margin-bottom: 12px;
 		padding: 1rem;
-		transition: all 0.2s ease;
+		transition:
+			transform 0.2s,
+			box-shadow 0.2s;
 	}
 
 	li:hover {
 		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-		border-color: #d1d5db;
+		transform: translateY(-1px);
 	}
 
-	/* Alignement des éléments principaux */
+	/* Infos de la tâche */
 	.task-info {
 		display: flex;
 		align-items: center;
@@ -109,59 +113,100 @@
 		flex-grow: 1;
 		font-size: 1rem;
 		color: #1f2937;
-		transition: color 0.3s;
 	}
 
-	/* Badge pour la personne assignée */
+	.done .label {
+		text-decoration: line-through;
+		color: #9ca3af;
+	}
+
+	/* Badge Assignee */
 	.assignee {
 		font-size: 0.75rem;
-		padding: 4px 8px;
+		padding: 4px 10px;
 		background-color: #eef2ff;
 		color: #4338ca;
 		border-radius: 20px;
-		font-weight: 500;
+		font-weight: 600;
+		border: 1px solid #dbeafe;
 	}
 
-	/* Actions (Bouton supprimer) */
+	/* Actions & Bouton Supprimer avec SVG */
 	.task-actions {
 		display: flex;
 		justify-content: flex-end;
-		margin-top: 8px;
+		margin-top: -25px; /* Aligne visuellement le bouton avec la ligne du haut */
 	}
 
 	.task-actions button {
-		background-color: #fee2e2;
-		color: #ef4444;
-		padding: 4px 10px;
-		font-size: 0.8rem;
+		background-color: #fef2f2;
+		border: 1px solid #fee2e2;
+		padding: 6px;
+		border-radius: 8px;
+		cursor: pointer;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		transition: all 0.2s;
+	}
+
+	.task-actions button img {
+		width: 18px;
+		height: 18px;
+		/* Si ton SVG est noir, tu peux utiliser filter pour le colorer en rouge */
+		/* filter: invert(39%) sepia(85%) saturate(1500%) hue-rotate(337deg) brightness(98%) contrast(90%); */
 	}
 
 	.task-actions button:hover {
-		background-color: #fecaca;
+		background-color: #fee2e2;
+		border-color: #fecaca;
 	}
 
-	/* Formulaire d'édition (s'affiche sous la tâche) */
+	/* Formulaire d'édition */
 	.edit-form {
 		display: flex;
 		flex-wrap: wrap;
-		gap: 8px;
-		margin-top: 12px;
-		padding-top: 12px;
-		border-top: 1px dashed #d1d5db;
+		gap: 10px;
+		margin-top: 15px;
+		padding-top: 15px;
+		border-top: 1px dashed #e5e7eb;
 	}
 
 	.edit-form input,
 	.edit-form select {
-		font-size: 0.85rem;
-		padding: 4px 8px;
+		padding: 6px 12px;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		font-size: 0.9rem;
+		background-color: #f9fafb;
 	}
 
 	.edit-form button {
-		font-size: 0.85rem;
-		background-color: #10b981; /* Vert pour signifier la validation */
+		background-color: #10b981;
+		color: white;
+		padding: 6px 15px;
+		border: none;
+		border-radius: 6px;
+		font-weight: 600;
+		cursor: pointer;
 	}
 
 	.edit-form button:hover {
 		background-color: #059669;
+	}
+
+	/* Gestion des erreurs dans l'édition */
+	.error {
+		flex: 1 0 100%;
+		color: #ef4444;
+		font-size: 0.85rem;
+		margin: 8px 0 0 0;
+		padding: 8px 12px;
+		background-color: #fef2f2;
+		border-left: 4px solid #ef4444;
+		border-radius: 4px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 </style>

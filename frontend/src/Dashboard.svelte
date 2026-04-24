@@ -174,12 +174,10 @@
 		token = null;
 	}
 
-	async function UpdateList(action: string, todo?: Todo) {
-		switch (action) {
-			case 'add':
-				await gqlQuery({
-					token,
-					query: `mutation CreateTask($input: TaskCreateInput!) {
+	async function addTask() {
+		await gqlQuery({
+			token,
+			query: `mutation CreateTask($input: TaskCreateInput!) {
 						createTask(data: $input) {
 							id
 							label
@@ -187,22 +185,26 @@
 							assignedTo { name }
 						}
 					}`,
-					variables: {
-						input: {
-							label: newTaskLabel,
-							isComplete: false,
-							assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : undefined
-						}
-					}
-				});
-				break;
-			case 'remove':
-				await gqlQuery({
-					token,
-					query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
-					variables: { id: todo.id }
-				});
-				break;
+			variables: {
+				input: {
+					label: newTaskLabel,
+					isComplete: false,
+					assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : undefined
+				}
+			}
+		});
+	}
+
+	async function removeTask(todo: Todo) {
+		await gqlQuery({
+			token,
+			query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
+			variables: { id: todo.id }
+		});
+	}
+
+	async function UpdateTask(action: string, todo?: Todo) {
+		switch (action) {
 			case 'update':
 				await gqlQuery({
 					token,
@@ -225,7 +227,7 @@
 				break;
 			case 'toggle':
 				todo.done = !todo.done;
-				await UpdateList('update', todo);
+				await UpdateTask('update', todo);
 				break;
 		}
 		dependency.todo++;
@@ -272,7 +274,7 @@
 				<button
 					onclick={() => {
 						if (newTaskLabel != '' && newTaskUser != '') {
-							UpdateList('add').then(
+							addTask().then(
 								() => {
 									newTaskLabel = '';
 									newTaskUser = '';
@@ -295,7 +297,7 @@
 				{/if}
 			</div>
 
-			<TodoList {todos} {users} onUpdateList={UpdateList} bind:isEditing />
+			<TodoList {todos} {users} onUpdateList={UpdateTask} onDelete={removeTask} bind:isEditing />
 
 			{#if !isEditing}
 				<button onclick={() => (isEditing = !isEditing)}>
@@ -320,34 +322,35 @@
 		--text-muted: #6b7280;
 		--error-color: #ef4444;
 		--border-color: #e5e7eb;
-		--shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		--shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 	}
 
 	main {
-		max-width: 700px; /* Légèrement plus large pour accommoder le nouveau contenu */
-		margin: 2rem auto;
+		max-width: 650px;
+		margin: 3rem auto;
 		padding: 2rem;
 		background-color: var(--card-bg);
-		border-radius: 12px;
+		border-radius: 16px;
 		box-shadow: var(--shadow);
 		font-family: 'Inter', system-ui, sans-serif;
 	}
 
-	/* Conteneur d'ajout : passage en wrap pour gérer l'erreur en dessous */
+	/* Barre d'ajout de tâche */
 	.add-task {
 		display: flex;
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 12px;
 		margin-bottom: 2rem;
-		padding: 1.5rem;
+		padding: 1.25rem;
 		background-color: var(--bg-color);
-		border-radius: 10px;
+		border-radius: 12px;
+		border: 1px solid var(--border-color);
 	}
 
 	.add-task p {
 		margin: 0;
-		font-size: 0.9rem;
+		font-size: 0.85rem;
 		font-weight: 600;
 		color: var(--text-muted);
 	}
@@ -358,17 +361,16 @@
 		border: 1px solid var(--border-color);
 		border-radius: 8px;
 		font-size: 0.95rem;
+		background-color: white;
 		transition: all 0.2s;
 	}
 
 	input[type='text'] {
-		flex: 2 1 200px; /* Grandit, rétrécit, base de 200px */
+		flex: 2 1 200px;
 	}
 
 	select {
-		flex: 1 1 150px;
-		background-color: white;
-		cursor: pointer;
+		flex: 1 1 120px;
 	}
 
 	input:focus,
@@ -378,8 +380,12 @@
 		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 	}
 
-	/* Boutons */
+	/* Boutons Génériques */
 	button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
 		padding: 0.6rem 1.2rem;
 		background-color: var(--primary-color);
 		color: white;
@@ -392,35 +398,41 @@
 
 	button:hover {
 		background-color: var(--primary-hover);
+		transform: translateY(-1px);
 	}
 
 	button:active {
-		transform: scale(0.98);
+		transform: translateY(0);
 	}
 
-	/* Gestion spécifique du bloc d'erreur */
+	/* Bouton flottant/principal pour l'édition (le gros bouton en bas) */
+	main > button {
+		width: 60px; /* Format circulaire pour les icônes */
+		height: 60px;
+		border-radius: 50%;
+		margin: 1.5rem auto 0 auto;
+		display: flex;
+		box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+	}
+
+	main > button img {
+		width: 24px;
+		height: 24px;
+		filter: brightness(0) invert(1); /* Rend l'icône blanche */
+	}
+
+	/* Zone d'erreur */
 	.error {
-		flex: 1 0 100%; /* Force le message d'erreur à prendre toute la ligne */
+		flex: 1 0 100%;
 		color: var(--error-color);
 		font-size: 0.85rem;
 		margin: 8px 0 0 0;
-		padding: 8px 12px;
+		padding: 10px 14px;
 		background-color: #fef2f2;
 		border-left: 4px solid var(--error-color);
-		border-radius: 4px;
-	}
-
-	/* Bouton d'édition en bas */
-	main > button {
-		width: 100%;
-		margin-top: 1.5rem;
-		background-color: transparent;
-		color: var(--primary-color);
-		border: 2px solid var(--primary-color);
-	}
-
-	main > button:hover {
-		background-color: var(--primary-color);
-		color: white;
+		border-radius: 6px;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
 	}
 </style>
