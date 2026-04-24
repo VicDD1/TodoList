@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { type Todo } from './App.svelte';
+	import { type Todo } from './Dashboard.svelte';
 
 	let { todos, users, onUpdateList, isEditing = $bindable() } = $props();
 

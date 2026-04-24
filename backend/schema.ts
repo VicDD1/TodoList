@@ -8,19 +8,24 @@ import {
 
 import { type Lists } from '.keystone/types';
 
-const isAdmin = ({ session }: { session?: { data: any } }) => !!session?.data;
+const isLoggedIn = ({ session }: { session?: { data: any } }) => !!session?.data;
+
+const isAdmin = ({ session }: { session?: { data: any } }) => session?.data.id == "cmo04erh00000bmgkyjqxhq6c";
 
 export const lists = {
   User: list({
   access: {
       operation: {
-        query: isAdmin,
-        create: isAdmin, 
-        update: isAdmin,
-        delete: isAdmin,
+        create: isAdmin,
+        query: isLoggedIn,
+        update: isLoggedIn,
+        delete: isAdmin
+      },
+      filter: {
+        query: ({ session }) => isAdmin({ session }) ? {} : { id: { equals: session.data.id } }
       },
       item: {
-        update: ({ session, item }) => session?.data.id === item.id,
+        update: ({ session, item }) => session?.data.id === item.id || isAdmin({ session }),
       }
     },
     fields: {
@@ -38,10 +43,10 @@ export const lists = {
   Task: list({
     access: {
       operation: {
-        query: isAdmin,
-        create: isAdmin,
-        update: isAdmin,
-        delete: isAdmin,
+        query: isLoggedIn,
+        create: isLoggedIn,
+        update: isLoggedIn,
+        delete: isLoggedIn,
       }
     },
     fields: {
