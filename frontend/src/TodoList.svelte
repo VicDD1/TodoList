@@ -41,8 +41,8 @@
 				<div class="edit-form">
 					<input type="text" bind:value={todo.description} />
 					<select bind:value={todo.assigneeId}>
-						<option value={users[0].id}>{users[0].name}</option>
-						{#each users.slice(1) as user}
+						<option value="">Non assigné</option>
+						{#each users as user}
 							<option value={user.id}>{user.name}</option>
 						{/each}
 					</select>

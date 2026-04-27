@@ -21,13 +21,13 @@
 		public id: string;
 		public description: string;
 		public done: boolean;
-		public assigneeId?: string;
+		public assigneeId?: string | null;
 
-		constructor(id: string, description: string, done: boolean, assigneeID: string) {
+		constructor(id: string, description: string, done: boolean, assigneeID: string | null) {
 			this.id = id;
 			this.description = description;
 			this.done = done;
-			this.assigneeId = assigneeID;
+			this.assigneeId = assigneeID || null;
 		}
 
 		toString() {
@@ -39,6 +39,7 @@
 <script lang="ts">
 	import editIcon from './edit.svg';
 	import doneIcon from './done.svg';
+	import clearIcon from './clear-all.svg';
 	import TodoList from './TodoList.svelte';
 	import Header from './Header.svelte';
 	import Conexion from './Conexion.svelte';
@@ -69,7 +70,7 @@
 	let password: string = $state('');
 
 	let newTaskLabel: string = $state('');
-	let newTaskUser: string = $state(null);
+	let newTaskUser: string | null = $state(null);
 	let isEditing = $state(false);
 	let createTaskError = $state(null);
 	let updateTaskError = $state(null);
@@ -93,7 +94,7 @@
 
 		return {
 			todos: data.tasks.map(
-				(task) => new Todo(task.id, task.label, task.isComplete, task.assignedTo?.id)
+				(task) => new Todo(task.id, task.label, task.isComplete, task.assignedTo?.id || null)
 			),
 			users: data.users.map(
 				(u) =>
@@ -113,12 +114,9 @@
 		token = null;
 	}
 
-	async function addTask(newTaskLabel: string, newTaskUser: string) {
-		if (newTaskLabel == '' || newTaskUser == '')
-			createTaskError = new Error(
-				'Veuillez entrer une description et sélectionner un utilisateur pour la tâche.'
-			);
-
+	async function addTask(newTaskLabel: string, newTaskUser: string | null) {
+		if (newTaskLabel == '')
+			createTaskError = new Error('Veuillez entrer une description pour la tâche.');
 		try {
 			await gqlQuery2({
 				token,
@@ -134,12 +132,14 @@
 					input: {
 						label: newTaskLabel,
 						isComplete: false,
-						assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : undefined
+						assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : null
 					}
 				}
 			});
 		} catch (error) {
 			createTaskError = error;
+		} finally {
+			dependency.todo++;
 		}
 	}
 
@@ -152,6 +152,8 @@
 			});
 		} catch (error) {
 			removeTaskError = error;
+		} finally {
+			dependency.todo++;
 		}
 	}
 
@@ -159,8 +161,9 @@
 		try {
 			await gqlQuery2({
 				token,
-				query: `mutation UpdateTask($id: ID!, $label: String, $isComplete: Boolean, $userId: ID) {
-					updateTask(where: { id: $	id }, data: { label: $label, isComplete: $isComplete, assignedTo: { connect: { id: $userId } } }) {
+
+				query: `mutation UpdateTask($id: ID!, $label: String, $isComplete: Boolean, $userId: UserRelateToOneForUpdateInput) {
+					updateTask(where: { id: $	id }, data: { label: $label, isComplete: $isComplete, assignedTo: $userId}) {
 						id 
 						label 
 						isComplete 
@@ -171,7 +174,7 @@
 					id: todo.id,
 					label: todo.description,
 					isComplete: todo.done,
-					userId: todo.assigneeId
+					userId: todo.assigneeId ? { connect: { id: todo.assigneeId } } : { disconnect: true }
 				}
 			});
 		} catch (error) {
@@ -184,6 +187,13 @@
 	function ToggleTask(todo: Todo) {
 		todo.done = !todo.done;
 		return UpdateTask(todo);
+	}
+
+	async function DeleteAllDone() {
+		const doneTasks = todos.filter((todo) => todo.done);
+		for (const todo of doneTasks) {
+			await removeTask(todo);
+		}
 	}
 
 	async function gqlQuery<T>({
@@ -247,6 +257,8 @@
 				else return data;
 			});
 	}
+
+	$inspect(todos);
 </script>
 
 {#if !isConnected}
@@ -260,6 +272,7 @@
 				<input type="text" placeholder="Nouvelle tâche" bind:value={newTaskLabel} />
 				<p>Asigné à :</p>
 				<select bind:value={newTaskUser}>
+					<option value={null}>Non assigné</option>
 					{#each users as user}
 						<option value={user.id}>{user.name}</option>
 					{/each}
@@ -268,7 +281,7 @@
 					onclick={() => {
 						addTask(newTaskLabel, newTaskUser).then(() => {
 							newTaskLabel = '';
-							newTaskUser = '';
+							newTaskUser = null;
 						});
 					}}
 				>
@@ -298,6 +311,9 @@
 				{:else}
 					<img src={doneIcon} alt="Terminer la modification" />
 				{/if}
+			</button>
+			<button onclick={DeleteAllDone}>
+				<img src={clearIcon} alt="Supprimer toutes les tâches terminées" />
 			</button>
 		</main>
 	</div>
