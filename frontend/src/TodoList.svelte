@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { type Todo } from './Dashboard.svelte';
 	import removeIcon from './remove.svg';
+	import { flip } from 'svelte/animate';
 
 	let {
 		todos,
 		users,
-		isEditing,
 		onUpdateTodo,
 		onToggleTodo,
 		onDelete,
@@ -13,21 +13,58 @@
 		removeTaskError = $bindable()
 	} = $props();
 
+	let editingId = $state(null);
+
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
 		return assignee ? assignee.name : 'Non assigné';
 	}
+
+	function handleExit(todo) {
+		editingId = null;
+		onUpdateTodo(todo);
+	}
+
+	let sortedTodos = $derived([...todos].sort((a, b) => Number(a.done) - Number(b.done)));
 </script>
 
 <ul class="todo-list">
-	{#each todos as todo}
-		<li class:done={todo.done}>
-			<div class="task-info">
+	{#each sortedTodos as todo (todo.id)}
+		<li class:done={todo.done} animate:flip={{ duration: 400 }}>
+			<div class="task-info" onfocusout={() => handleExit(todo)}>
 				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
-				<span class="label">{todo.description}</span>
+				{#if editingId === todo.id}
+					<input
+						type="text"
+						bind:value={todo.description}
+						onkeydown={(e) => e.key === 'Enter' && handleExit(todo)}
+						class="edit-input"
+					/>
 
-				<span class="assignee">{getAssigneeName(todo)}</span>
+					<select bind:value={todo.assigneeId}>
+						<option value="">Non assigné</option>
+						{#each users as user}
+							<option value={user.id}>{user.name}</option>
+						{/each}
+					</select>
+				{:else}
+					<button
+						type="button"
+						class="invisible-button label"
+						onclick={() => (editingId = todo.id)}
+					>
+						{todo.description}
+					</button>
+
+					<button
+						type="button"
+						class="invisible-button assignee"
+						onclick={() => (editingId = todo.id)}
+					>
+						({getAssigneeName(todo)})
+					</button>
+				{/if}
 			</div>
 			<div class="task-actions">
 				<button onclick={() => onDelete(todo)}>
@@ -35,27 +72,16 @@
 				</button>
 			</div>
 
-			<!--sur le clic on affiche un formulaire de modification-->
-
-			{#if isEditing}
-				<div class="edit-form">
-					<input type="text" bind:value={todo.description} />
-					<select bind:value={todo.assigneeId}>
-						<option value="">Non assigné</option>
-						{#each users as user}
-							<option value={user.id}>{user.name}</option>
-						{/each}
-					</select>
-					<button onclick={() => onUpdateTodo(todo)}>Enregistrer</button>
+			{#if updateTaskError || removeTaskError}
+				<div class="error">
+					<p>{updateTaskError?.message || removeTaskError?.message}</p>
+					<button
+						onclick={() => {
+							updateTaskError = null;
+							removeTaskError = null;
+						}}>ok</button
+					>
 				</div>
-			{/if}
-			{#if updateTaskError}
-				<p class="error">{updateTaskError.message}</p>
-				<button onclick={() => (updateTaskError = null)}>ok</button>
-			{/if}
-			{#if removeTaskError}
-				<p class="error">{removeTaskError.message}</p>
-				<button onclick={() => (removeTaskError = null)}>ok</button>
 			{/if}
 		</li>
 	{/each}
@@ -116,6 +142,20 @@
 		color: #9ca3af;
 	}
 
+	.invisible-button {
+		background: none;
+		border: none;
+		padding: 0;
+		margin: 0;
+		font: inherit; /* Reprend la police du parent */
+		color: inherit;
+		cursor: pointer;
+		text-align: left;
+	}
+
+	.invisible-button:hover {
+		text-decoration: underline; /* Optionnel : aide à comprendre que c'est cliquable */
+	}
 	/* Badge Assignee */
 	.assignee {
 		font-size: 0.75rem;
@@ -155,41 +195,6 @@
 	.task-actions button:hover {
 		background-color: #fee2e2;
 		border-color: #fecaca;
-	}
-
-	/* Formulaire d'édition */
-	.edit-form {
-		width: 100%;
-		display: flex;
-		flex-basis: 100%;
-		flex-wrap: wrap;
-		gap: 10px;
-		margin-top: 15px;
-		padding-top: 15px;
-		border-top: 1px dashed #e5e7eb;
-	}
-
-	.edit-form input,
-	.edit-form select {
-		padding: 6px 12px;
-		border: 1px solid #d1d5db;
-		border-radius: 6px;
-		font-size: 0.9rem;
-		background-color: #f9fafb;
-	}
-
-	.edit-form button {
-		background-color: #10b981;
-		color: white;
-		padding: 6px 15px;
-		border: none;
-		border-radius: 6px;
-		font-weight: 600;
-		cursor: pointer;
-	}
-
-	.edit-form button:hover {
-		background-color: #059669;
 	}
 
 	/* Gestion des erreurs dans l'édition */

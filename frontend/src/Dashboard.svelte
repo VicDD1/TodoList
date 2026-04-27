@@ -71,7 +71,7 @@
 
 	let newTaskLabel: string = $state('');
 	let newTaskUser: string | null = $state(null);
-	let isEditing = $state(false);
+
 	let createTaskError = $state(null);
 	let updateTaskError = $state(null);
 	let removeTaskError = $state(null);
@@ -297,7 +297,6 @@
 			<TodoList
 				{todos}
 				{users}
-				{isEditing}
 				onToggleTodo={(todo) => ToggleTask(todo)}
 				onUpdateTodo={(todo) => UpdateTask(todo)}
 				onDelete={removeTask}
@@ -305,13 +304,6 @@
 				bind:removeTaskError
 			/>
 
-			<button onclick={() => (isEditing = !isEditing)}>
-				{#if !isEditing}
-					<img src={editIcon} alt="Modifier" />
-				{:else}
-					<img src={doneIcon} alt="Terminer la modification" />
-				{/if}
-			</button>
 			<button onclick={DeleteAllDone}>
 				<img src={clearIcon} alt="Supprimer toutes les tâches terminées" />
 			</button>
