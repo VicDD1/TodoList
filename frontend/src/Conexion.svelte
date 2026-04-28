@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
 	let { API_URL, email, password, token = $bindable(), me = $bindable() } = $props();
 
 	async function login() {
@@ -46,14 +46,25 @@
 			console.error('Erreur technique :', err);
 		}
 	}
+
+	function onSubmit(evt: Event) {
+		evt.preventDefault();
+		login();
+	}
 </script>
 
-<div class="login-container">
+<form onsubmit={onSubmit} class="login-container">
 	<h2>Connexion</h2>
-	<input type="email" placeholder="Email" bind:value={email} />
-	<input type="password" placeholder="Mot de passe" bind:value={password} />
-	<button onclick={login}>Se connecter</button>
-</div>
+	<input type="email" placeholder="Email" autocomplete="email" bind:value={email} required />
+	<input
+		type="password"
+		placeholder="Mot de passe"
+		autocomplete="current-password"
+		bind:value={password}
+		required
+	/>
+	<button type="submit">Se connecter</button>
+</form>
 
 <style>
 	/* Style du conteneur principal */

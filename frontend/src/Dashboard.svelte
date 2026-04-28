@@ -80,7 +80,7 @@
 		dependency.todo;
 		dependency.user;
 		dependency.auth;
-		const data = await gqlQuery<{ tasks: any[]; users: any[]; me: any }>({
+		const result = await gqlQuery2<{ tasks: any[]; users: any[]; me: any }>({
 			token,
 			query: `query {
 				tasks { id label isComplete assignedTo { id } }
@@ -91,6 +91,7 @@
 				id name email tasks { id }
 			}`
 		});
+		const [error, data] = result.asTuple();
 
 		return {
 			todos: data.tasks.map(
@@ -117,10 +118,9 @@
 	async function addTask(newTaskLabel: string, newTaskUser: string | null) {
 		if (newTaskLabel == '')
 			createTaskError = new Error('Veuillez entrer une description pour la tâche.');
-		try {
-			await gqlQuery2({
-				token,
-				query: `mutation CreateTask($input: TaskCreateInput!) {
+		await gqlQuery2({
+			token,
+			query: `mutation CreateTask($input: TaskCreateInput!) {
 							createTask(data: $input) {
 								id
 								label
@@ -128,19 +128,21 @@
 								assignedTo { name }
 							}
 						}`,
-				variables: {
-					input: {
-						label: newTaskLabel,
-						isComplete: false,
-						assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : null
-					}
+			variables: {
+				input: {
+					label: newTaskLabel,
+					isComplete: false,
+					assignedTo: newTaskUser ? { connect: { id: newTaskUser } } : null
 				}
-			});
-		} catch (error) {
-			createTaskError = error;
-		} finally {
-			dependency.todo++;
-		}
+			}
+		}).match(
+			(data) => {
+				dependency.todo++;
+			},
+			(error) => {
+				createTaskError = error;
+			}
+		);
 	}
 
 	async function removeTask(todo: Todo) {
@@ -158,30 +160,27 @@
 	}
 
 	async function UpdateTask(todo?: Todo) {
-		try {
-			await gqlQuery2({
-				token,
-
-				query: `mutation UpdateTask($id: ID!, $label: String, $isComplete: Boolean, $userId: UserRelateToOneForUpdateInput) {
-					updateTask(where: { id: $	id }, data: { label: $label, isComplete: $isComplete, assignedTo: $userId}) {
+		const [error, data] = await gqlQuery2({
+			token,
+			query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
+					updateTask(where: { id: $id }, data: $data) {
 						id 
 						label 
 						isComplete 
 						assignedTo { name }
 					}
 				}`,
-				variables: {
-					id: todo.id,
+			variables: {
+				id: todo.id,
+				data: {
 					label: todo.description,
 					isComplete: todo.done,
-					userId: todo.assigneeId ? { connect: { id: todo.assigneeId } } : { disconnect: true }
+					assignedTo: todo.assigneeId ? { connect: { id: todo.assigneeId } } : { disconnect: true }
 				}
-			});
-		} catch (error) {
-			updateTaskError = error;
-		} finally {
-			dependency.todo++;
-		}
+			}
+		}).asTuple();
+		if (error) updateTaskError = error;
+		dependency.todo++;
 	}
 
 	function ToggleTask(todo: Todo) {
@@ -194,36 +193,6 @@
 		for (const todo of doneTasks) {
 			await removeTask(todo);
 		}
-	}
-
-	async function gqlQuery<T>({
-		token,
-		query,
-		variables
-	}: {
-		token: string;
-		query: string;
-		variables?: any;
-	}): Promise<T> {
-		return fetch(API_URL, {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-				Authorization: `Bearer ${token}`
-			},
-			body: JSON.stringify({ query, variables })
-		})
-			.then(
-				(response) => response.json(),
-				(error) => new Error('Netwok error', { cause: error })
-			)
-			.then(
-				({ data, errors }) => {
-					if (errors) throw new Error('API errors lol', { cause: errors });
-					else return data;
-				},
-				(error) => new Error('wtf?', { cause: error })
-			);
 	}
 
 	function gqlQuery2<T>({
@@ -268,10 +237,10 @@
 		<Header {me} onlogout={logout} />
 
 		<main>
-			<div class="add-task">
+			<form onsubmit={(evt) => evt.preventDefault()} class="add-task">
 				<input type="text" placeholder="Nouvelle tâche" bind:value={newTaskLabel} />
-				<p>Asigné à :</p>
-				<select bind:value={newTaskUser}>
+				<label for="assigned-to">Asigné à :</label>
+				<select id="assigned-to" bind:value={newTaskUser}>
 					<option value={null}>Non assigné</option>
 					{#each users as user}
 						<option value={user.id}>{user.name}</option>
@@ -292,7 +261,7 @@
 					<p class="error">{createTaskError.message}</p>
 					<button onclick={() => (createTaskError = null)}>ok</button>
 				{/if}
-			</div>
+			</form>
 
 			<TodoList
 				{todos}

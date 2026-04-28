@@ -1,7 +1,17 @@
 <script lang="ts">
-	import { type Todo } from './Dashboard.svelte';
+	import { type Todo, type User } from './Dashboard.svelte';
 	import removeIcon from './remove.svg';
 	import { flip } from 'svelte/animate';
+
+	interface Props {
+		todos: Todo[];
+		users: User[];
+		onUpdateTodo(todo: Todo): void;
+		onToggleTodo(todo: Todo): void;
+		onDelete(todo: Todo): void;
+		updateTaskError?: Error;
+		removeTaskError?: Error;
+	}
 
 	let {
 		todos,
@@ -11,7 +21,7 @@
 		onDelete,
 		updateTaskError = $bindable(),
 		removeTaskError = $bindable()
-	} = $props();
+	}: Props = $props();
 
 	let editingId = $state(null);
 
@@ -26,23 +36,32 @@
 		onUpdateTodo(todo);
 	}
 
-	let sortedTodos = $derived([...todos].sort((a, b) => Number(a.done) - Number(b.done)));
+	let sortedTodos = $derived(todos.toSorted((a, b) => Number(a.done) - Number(b.done)));
+	let indexOfFirstDone = $derived(sortedTodos.findIndex((todo) => todo.done));
 </script>
 
 <ul class="todo-list">
-	{#each sortedTodos as todo (todo.id)}
-		<li class:done={todo.done} animate:flip={{ duration: 400 }}>
-			<div class="task-info" onfocusout={() => handleExit(todo)}>
+	{#each sortedTodos as todo, i (todo.id)}
+		<li
+			class:done={todo.done}
+			animate:flip={{ duration: 400, delay: 100 * (i - indexOfFirstDone) }}
+		>
+			<div class="task-info">
 				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
 				{#if editingId === todo.id}
+					<!-- svelte-ignore a11y_autofocus -->
 					<input
 						type="text"
 						bind:value={todo.description}
+						autofocus
 						onkeydown={(e) => e.key === 'Enter' && handleExit(todo)}
 						class="edit-input"
 					/>
 
-					<select bind:value={todo.assigneeId}>
+					<select
+						bind:value={todo.assigneeId}
+						onkeydown={(e) => e.key === 'Enter' && handleExit(todo)}
+					>
 						<option value="">Non assigné</option>
 						{#each users as user}
 							<option value={user.id}>{user.name}</option>
@@ -71,20 +90,19 @@
 					<img src={removeIcon} alt="Supprimer" />
 				</button>
 			</div>
-
-			{#if updateTaskError || removeTaskError}
-				<div class="error">
-					<p>{updateTaskError?.message || removeTaskError?.message}</p>
-					<button
-						onclick={() => {
-							updateTaskError = null;
-							removeTaskError = null;
-						}}>ok</button
-					>
-				</div>
-			{/if}
 		</li>
 	{/each}
+	{#if updateTaskError || removeTaskError}
+		<div class="error">
+			<p>{updateTaskError?.message || removeTaskError?.message}</p>
+			<button
+				onclick={() => {
+					updateTaskError = null;
+					removeTaskError = null;
+				}}>ok</button
+			>
+		</div>
+	{/if}
 </ul>
 
 <style>
@@ -108,11 +126,6 @@
 		transition:
 			transform 0.2s,
 			box-shadow 0.2s;
-	}
-
-	li:hover {
-		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-		transform: translateY(-1px);
 	}
 
 	/* Infos de la tâche */
