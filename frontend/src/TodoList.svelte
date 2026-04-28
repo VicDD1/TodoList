@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { type Todo, type User } from './Dashboard.svelte';
 	import removeIcon from './remove.svg';
+	import doneIcon from './done.svg';
 	import { flip } from 'svelte/animate';
 
 	interface Props {
@@ -25,6 +26,8 @@
 
 	let editingId = $state(null);
 
+	let sortedTodos = $derived(todos.toSorted((a, b) => Number(a.done) - Number(b.done)));
+	let indexOfFirstDone = $derived(sortedTodos.findIndex((todo) => todo.done));
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
@@ -35,9 +38,6 @@
 		editingId = null;
 		onUpdateTodo(todo);
 	}
-
-	let sortedTodos = $derived(todos.toSorted((a, b) => Number(a.done) - Number(b.done)));
-	let indexOfFirstDone = $derived(sortedTodos.findIndex((todo) => todo.done));
 </script>
 
 <ul class="todo-list">
@@ -49,24 +49,25 @@
 			<div class="task-info">
 				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
 				{#if editingId === todo.id}
-					<!-- svelte-ignore a11y_autofocus -->
-					<input
-						type="text"
-						bind:value={todo.description}
-						autofocus
-						onkeydown={(e) => e.key === 'Enter' && handleExit(todo)}
-						class="edit-input"
-					/>
+					<form onsubmit={(evt) => evt.preventDefault} class="edit-form">
+						<!-- svelte-ignore a11y_autofocus -->
+						<input
+							type="text"
+							placeholder="Description"
+							bind:value={todo.description}
+							class="edit-input"
+						/>
 
-					<select
-						bind:value={todo.assigneeId}
-						onkeydown={(e) => e.key === 'Enter' && handleExit(todo)}
-					>
-						<option value="">Non assigné</option>
-						{#each users as user}
-							<option value={user.id}>{user.name}</option>
-						{/each}
-					</select>
+						<select bind:value={todo.assigneeId}>
+							<option value="">Non assigné</option>
+							{#each users as user}
+								<option value={user.id}>{user.name}</option>
+							{/each}
+						</select>
+						<button onclick={() => handleExit(todo)}
+							><img src={doneIcon} alt="Valider le Todo" /></button
+						>
+					</form>
 				{:else}
 					<button
 						type="button"
@@ -143,6 +144,25 @@
 		accent-color: #4f46e5;
 	}
 
+	.edit-form button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		padding: 0.6rem 1.2rem;
+		background-color: var(--primary-color);
+		color: white;
+		border: none;
+		border-radius: 8px;
+		font-weight: 600;
+		cursor: pointer;
+	}
+	.edit-form button img {
+		width: 18px;
+		height: 18px;
+		filter: brightness(0) invert(1);
+	}
+
 	.label {
 		flex-grow: 1;
 		overflow: hidden;
@@ -185,7 +205,7 @@
 	.task-actions {
 		display: flex;
 		align-items: center;
-		margin-top: 0; /* ON ENLÈVE LE MARGIN NÉGATIF ICI */
+		margin-top: 0;
 		flex-shrink: 0;
 	}
 
@@ -201,13 +221,6 @@
 	.task-actions button img {
 		width: 18px;
 		height: 18px;
-		/* Si ton SVG est noir, tu peux utiliser filter pour le colorer en rouge */
-		/* filter: invert(39%) sepia(85%) saturate(1500%) hue-rotate(337deg) brightness(98%) contrast(90%); */
-	}
-
-	.task-actions button:hover {
-		background-color: #fee2e2;
-		border-color: #fecaca;
 	}
 
 	/* Gestion des erreurs dans l'édition */

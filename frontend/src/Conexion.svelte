@@ -129,11 +129,6 @@
 		margin-top: 0.5rem;
 	}
 
-	button:hover {
-		background-color: #4338ca;
-		box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
-	}
-
 	button:active {
 		transform: scale(0.98);
 	}

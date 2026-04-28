@@ -58,12 +58,6 @@
 		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 	}
 
-	.user-info button:hover {
-		background-color: #ef4444;
-		color: white;
-		transform: translateY(-1px); /* Petit effet de lévitation au survol */
-	}
-
 	.user-info button:active {
 		transform: translateY(0);
 	}

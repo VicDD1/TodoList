@@ -37,8 +37,6 @@
 </script>
 
 <script lang="ts">
-	import editIcon from './edit.svg';
-	import doneIcon from './done.svg';
 	import clearIcon from './clear-all.svg';
 	import TodoList from './TodoList.svelte';
 	import Header from './Header.svelte';
@@ -146,17 +144,14 @@
 	}
 
 	async function removeTask(todo: Todo) {
-		try {
-			await gqlQuery2({
-				token,
-				query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
-				variables: { id: todo.id }
-			});
-		} catch (error) {
-			removeTaskError = error;
-		} finally {
-			dependency.todo++;
-		}
+		const [error, data] = await gqlQuery2({
+			token,
+			query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
+			variables: { id: todo.id }
+		}).asTuple();
+		if (error) removeTaskError = error;
+
+		dependency.todo++;
 	}
 
 	async function UpdateTask(todo?: Todo) {
@@ -190,9 +185,16 @@
 
 	async function DeleteAllDone() {
 		const doneTasks = todos.filter((todo) => todo.done);
+		//on supprime tout en même temps
 		for (const todo of doneTasks) {
-			await removeTask(todo);
+			const [error, data] = await gqlQuery2({
+				token,
+				query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
+				variables: { id: todo.id }
+			}).asTuple();
+			if (error) removeTaskError = error;
 		}
+		dependency.todo++;
 	}
 
 	function gqlQuery2<T>({
@@ -364,11 +366,6 @@
 		transition: all 0.2s;
 	}
 
-	button:hover {
-		background-color: var(--primary-hover);
-		transform: translateY(-1px);
-	}
-
 	button:active {
 		transform: translateY(0);
 	}
@@ -386,7 +383,7 @@
 	main > button img {
 		width: 24px;
 		height: 24px;
-		filter: brightness(0) invert(1); /* Rend l'icône blanche */
+		filter: brightness(0) invert(1);
 	}
 
 	/* Zone d'erreur */
