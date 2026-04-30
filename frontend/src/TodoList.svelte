@@ -30,7 +30,6 @@
 	let assigneeEl = $state<HTMLSelectElement>();
 
 	let sortedTodos = $derived(todos.toSorted((a, b) => Number(a.done) - Number(b.done)));
-	let firstDoneIdx = $derived(sortedTodos.findIndex((todo) => todo.done));
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
@@ -57,10 +56,7 @@
 
 <ul class="todo-list">
 	{#each sortedTodos as todo, i (todo.id)}
-		<li
-			class:done={todo.done}
-			animate:flip={{ duration: 400, delay: Math.max(0, (i - firstDoneIdx) * 1000) }}
-		>
+		<li class:done={todo.done} animate:flip={{ duration: 400 }}>
 			<div class="task-info">
 				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
 				{#if editing?.id === todo.id}

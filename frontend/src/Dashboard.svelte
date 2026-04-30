@@ -158,15 +158,17 @@
 		dependency.todo++;
 	}
 
-	async function UpdateTask(todo?: Todo) {
-		const [error, data] = await gqlQuery2({
+	async function UpdateTask(todo: Todo) {
+		const newTodo = todo.clone();
+		const idx = todos.findIndex((todo) => todo.id == newTodo.id);
+		if (idx != -1) todos = todos.with(idx, newTodo);
+
+		const [error, data] = await gqlQuery2<{ updateTask: any }>({
 			token,
-			query: `mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
+			query: `
+				mutation UpdateTask($id: ID!, $data: TaskUpdateInput!) {
 					updateTask(where: { id: $id }, data: $data) {
-						id 
-						label 
-						isComplete 
-						assignedTo { name }
+						id label isComplete assignedTo { id }
 					}
 				}`,
 			variables: {

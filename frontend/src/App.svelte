@@ -1,4 +1,5 @@
 <script lang="ts">
+	import './styles.css';
 	import Dashboard from './Dashboard.svelte';
 </script>
 
