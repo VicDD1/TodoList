@@ -30,6 +30,10 @@
 			this.assigneeId = assigneeID || null;
 		}
 
+		clone() {
+			return new Todo(this.id, this.description, this.done, this.assigneeId);
+		}
+
 		toString() {
 			return this.description;
 		}
@@ -184,16 +188,26 @@
 	}
 
 	async function DeleteAllDone() {
-		const doneTasks = todos.filter((todo) => todo.done);
-		//on supprime tout en même temps
-		for (const todo of doneTasks) {
-			const [error, data] = await gqlQuery2({
-				token,
-				query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
-				variables: { id: todo.id }
-			}).asTuple();
-			if (error) removeTaskError = error;
+		const idsToDelete = todos.filter((todo) => todo.done).map((todo) => ({ id: todo.id }));
+		const [error, data] = await gqlQuery2({
+			token,
+			query: `
+            mutation($where: [TaskWhereUniqueInput!]!) {
+                deleteTasks(where: $where) {
+                    id
+                }
+            }
+        `,
+			variables: {
+				where: idsToDelete
+			}
+		}).asTuple();
+
+		if (error) {
+			removeTaskError = error;
+			console.error(removeTaskError);
 		}
+
 		dependency.todo++;
 	}
 

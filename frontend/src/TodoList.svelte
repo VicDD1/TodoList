@@ -3,6 +3,7 @@
 	import removeIcon from './remove.svg';
 	import doneIcon from './done.svg';
 	import { flip } from 'svelte/animate';
+	import { tick } from 'svelte';
 
 	interface Props {
 		todos: Todo[];
@@ -24,19 +25,33 @@
 		removeTaskError = $bindable()
 	}: Props = $props();
 
-	let editingId = $state(null);
+	let editing = $state<Todo>(null);
+	let labelEl = $state<HTMLInputElement>();
+	let assigneeEl = $state<HTMLSelectElement>();
 
 	let sortedTodos = $derived(todos.toSorted((a, b) => Number(a.done) - Number(b.done)));
-	let indexOfFirstDone = $derived(sortedTodos.findIndex((todo) => todo.done));
+	let firstDoneIdx = $derived(sortedTodos.findIndex((todo) => todo.done));
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
 	function getAssigneeName(todo: Todo) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
 		return assignee ? assignee.name : 'Non assigné';
 	}
 
-	function handleExit(todo) {
-		editingId = null;
-		onUpdateTodo(todo);
+	function onSubmit(evt: Event) {
+		evt.preventDefault();
+		onUpdateTodo(editing);
+		editing = null;
+	}
+
+	async function selectUpdateTask(todo: Todo, focus: 'label' | 'assignee' = 'label') {
+		editing = todo.clone();
+
+		await tick();
+		if (focus == 'label') {
+			labelEl.focus();
+		} else if (focus == 'assignee') {
+			assigneeEl.focus();
+		}
 	}
 </script>
 
@@ -44,35 +59,35 @@
 	{#each sortedTodos as todo, i (todo.id)}
 		<li
 			class:done={todo.done}
-			animate:flip={{ duration: 400, delay: 100 * (i - indexOfFirstDone) }}
+			animate:flip={{ duration: 400, delay: Math.max(0, (i - firstDoneIdx) * 1000) }}
 		>
 			<div class="task-info">
 				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
-				{#if editingId === todo.id}
-					<form onsubmit={(evt) => evt.preventDefault} class="edit-form">
-						<!-- svelte-ignore a11y_autofocus -->
+				{#if editing?.id === todo.id}
+					<form onsubmit={onSubmit} class="edit-form">
 						<input
 							type="text"
 							placeholder="Description"
-							bind:value={todo.description}
-							class="edit-input"
+							bind:this={labelEl}
+							bind:value={editing.description}
+							id="edit-input"
 						/>
 
-						<select bind:value={todo.assigneeId}>
+						<select bind:this={assigneeEl} bind:value={editing.assigneeId} id="newasigned">
 							<option value="">Non assigné</option>
 							{#each users as user}
 								<option value={user.id}>{user.name}</option>
 							{/each}
 						</select>
-						<button onclick={() => handleExit(todo)}
-							><img src={doneIcon} alt="Valider le Todo" /></button
-						>
+						<button><img src={doneIcon} alt="Valider le Todo" /></button>
 					</form>
 				{:else}
 					<button
 						type="button"
 						class="invisible-button label"
-						onclick={() => (editingId = todo.id)}
+						onclick={() => {
+							selectUpdateTask(todo, 'label');
+						}}
 					>
 						{todo.description}
 					</button>
@@ -80,7 +95,9 @@
 					<button
 						type="button"
 						class="invisible-button assignee"
-						onclick={() => (editingId = todo.id)}
+						onclick={() => {
+							selectUpdateTask(todo, 'assignee');
+						}}
 					>
 						({getAssigneeName(todo)})
 					</button>
@@ -144,6 +161,22 @@
 		accent-color: #4f46e5;
 	}
 
+	input[type='text'],
+	select {
+		padding: 0.6rem 1rem;
+		border: 1px solid var(--border-color);
+		border-radius: 8px;
+		font-size: 0.95rem;
+		background-color: white;
+		transition: all 0.2s;
+	}
+
+	input:focus,
+	select:focus {
+		outline: none;
+		border-color: var(--primary-color);
+		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+	}
 	.edit-form button {
 		display: inline-flex;
 		align-items: center;
