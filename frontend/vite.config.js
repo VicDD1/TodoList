@@ -4,4 +4,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 export default defineConfig({
   plugins: [svelte()],
+  server: {
+    allowedHosts: ['todoliststage.share.zrok.io']
+  }
 })

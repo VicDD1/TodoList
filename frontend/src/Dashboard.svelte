@@ -47,7 +47,7 @@
 	import Conexion from './Conexion.svelte';
 	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
 
-	const API_URL = 'http://localhost:3000/api/graphql';
+	const API_URL = 'https://keystonetodostage.share.zrok.io/api/graphql';
 
 	let token: string | null = $state(localStorage.getItem('keystonejs-session'));
 	$effect(() => {

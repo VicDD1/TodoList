@@ -10,10 +10,22 @@ export default withAuth(
     },
     lists,
     session,
+    ui: {
+      isAccessAllowed: (context) => !!context.session?.data,
+      
+    },
     server: {
       cors: { 
-        origin: ['http://localhost:5173'], 
-        credentials: true 
+        origin: [
+          'https://todoliststage.share.zrok.io', 
+          'http://localhost:5173'
+        ], 
+        credentials: true,
+        methods: ['GET', 'POST', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+      },
+      extendExpressApp: (app) => {
+        app.set('trust proxy', true);
       },
     },
   })
