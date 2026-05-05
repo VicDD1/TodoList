@@ -1,4 +1,6 @@
 import { list } from '@keystone-6/core';
+
+import { notifyClients } from './keystone';
 import {
   text,
   relationship,
@@ -28,6 +30,11 @@ export const lists = {
         update: ({ session, item }) => session?.data.id === item.id || isAdmin({ session }),
       }
     },
+    hooks: {
+      afterOperation: ({ item }) => {
+        notifyClients( 'USER_CHANGED',item );
+      }
+    },
     fields: {
       name: text({ validation: { isRequired: true } }),
       email: text({
@@ -47,6 +54,14 @@ export const lists = {
         create: isLoggedIn,
         update: isLoggedIn,
         delete: isLoggedIn,
+      }
+    },
+    hooks: {
+      afterOperation: ({ operation, item, originalItem  }) => {
+        if (operation == "delete")
+        notifyClients('TASK_DELETED', originalItem.id);
+        else
+        notifyClients('TASK_CHANGED', item);
       }
     },
     fields: {

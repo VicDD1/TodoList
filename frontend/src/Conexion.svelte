@@ -1,9 +1,9 @@
 <script lang="ts">
-	let { API_URL, email, password, token = $bindable(), me = $bindable() } = $props();
+	let { email, password, token = $bindable(), me = $bindable() } = $props();
 
 	async function login() {
 		try {
-			const response = await fetch(API_URL, {
+			const response = await fetch(PUBLIC_API_URL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({

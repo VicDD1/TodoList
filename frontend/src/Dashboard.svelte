@@ -47,8 +47,6 @@
 	import Conexion from './Conexion.svelte';
 	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
 
-	const API_URL = 'https://keystonetodostage.share.zrok.io/api/graphql';
-
 	let token: string | null = $state(localStorage.getItem('keystonejs-session'));
 	$effect(() => {
 		if (token) localStorage.setItem('keystonejs-session', token);
@@ -57,11 +55,18 @@
 
 	let dependency = $state({ todo: 1, user: 1, auth: 1 });
 	$effect(() => {
-		setInterval(() => {
-			dependency.todo++;
-			dependency.user++;
-			dependency.auth++;
-		}, 30_000);
+		const sseUrl = 'https://keystonetodostage.share.zrok.io/api/events';
+		const eventSource = new EventSource(sseUrl);
+
+		eventSource.onmessage = (event) => {
+			const data = JSON.parse(event.data);
+			if (data.type === 'TASK_CHANGED') dependency.todo++;
+			if (data.type === 'USER_CHANGED') dependency.user++;
+		};
+
+		return () => {
+			eventSource.close();
+		};
 	});
 
 	// State global de l'application
@@ -82,6 +87,7 @@
 		dependency.todo;
 		dependency.user;
 		dependency.auth;
+
 		const result = await gqlQuery2<{ tasks: any[]; users: any[]; me: any }>({
 			token,
 			query: `query {
@@ -115,6 +121,7 @@
 	// Fonction de déconnexion qui met à null le token
 	function logout() {
 		token = null;
+		dependency.auth++;
 	}
 
 	async function addTask(newTaskLabel: string, newTaskUser: string | null) {
@@ -122,14 +129,7 @@
 			createTaskError = new Error('Veuillez entrer une description pour la tâche.');
 		await gqlQuery2({
 			token,
-			query: `mutation CreateTask($input: TaskCreateInput!) {
-							createTask(data: $input) {
-								id
-								label
-								isComplete
-								assignedTo { name }
-							}
-						}`,
+			query: `mutation CreateTask($input: TaskCreateInput!) { createTask(data: $input) { id } }`,
 			variables: {
 				input: {
 					label: newTaskLabel,
@@ -223,7 +223,7 @@
 		variables?: any;
 	}): AsyncResult<Error, T> {
 		return safe(() =>
-			fetch(API_URL, {
+			fetch(PUBLIC_API_URL, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',
@@ -249,7 +249,7 @@
 </script>
 
 {#if !isConnected}
-	<Conexion {API_URL} {email} {password} bind:token bind:me />
+	<Conexion {email} {password} bind:token bind:me />
 {:else}
 	<div class="app-container">
 		<Header {me} onlogout={logout} />
