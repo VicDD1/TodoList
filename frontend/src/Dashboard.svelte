@@ -47,6 +47,9 @@
 	import Conexion from './Conexion.svelte';
 	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
 
+	const API_URL = import.meta.env.PUBLIC_API_URL;
+	console.log(API_URL);
+
 	let token: string | null = $state(localStorage.getItem('keystonejs-session'));
 	$effect(() => {
 		if (token) localStorage.setItem('keystonejs-session', token);
@@ -223,7 +226,7 @@
 		variables?: any;
 	}): AsyncResult<Error, T> {
 		return safe(() =>
-			fetch(PUBLIC_API_URL, {
+			fetch(API_URL, {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json',

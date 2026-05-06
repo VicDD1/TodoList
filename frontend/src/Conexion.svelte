@@ -1,9 +1,10 @@
 <script lang="ts">
 	let { email, password, token = $bindable(), me = $bindable() } = $props();
+	const API_URL = import.meta.env.PUBLIC_API_URL;
 
 	async function login() {
 		try {
-			const response = await fetch(PUBLIC_API_URL, {
+			const response = await fetch(API_URL, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
