@@ -47,8 +47,7 @@
 	import Conexion from './Conexion.svelte';
 	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
 
-	const API_URL = import.meta.env.PUBLIC_API_URL;
-	console.log(API_URL);
+	const API_URL = 'https://keystonetodostage.share.zrok.io/api/graphql';
 
 	let token: string | null = $state(localStorage.getItem('keystonejs-session'));
 	$effect(() => {
@@ -63,8 +62,18 @@
 
 		eventSource.onmessage = (event) => {
 			const data = JSON.parse(event.data);
-			if (data.type === 'TASK_CHANGED') dependency.todo++;
-			if (data.type === 'USER_CHANGED') dependency.user++;
+			if (
+				data.type === 'TASK_CHANGED' ||
+				data.type === 'TASK_DELETED' ||
+				data.type === 'TASK_CREATED'
+			)
+				dependency.todo++;
+			if (
+				data.type === 'USER_CHANGED' ||
+				data.type === 'USER_DELETED' ||
+				data.type === 'USER_CREATED'
+			)
+				dependency.user++;
 		};
 
 		return () => {
@@ -247,8 +256,6 @@
 				else return data;
 			});
 	}
-
-	$inspect(todos);
 </script>
 
 {#if !isConnected}

@@ -1,6 +1,6 @@
 <script lang="ts">
 	let { email, password, token = $bindable(), me = $bindable() } = $props();
-	const API_URL = import.meta.env.PUBLIC_API_URL;
+	const API_URL = 'https://keystonetodostage.share.zrok.io/api/graphql';
 
 	async function login() {
 		try {

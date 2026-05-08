@@ -31,8 +31,16 @@ export const lists = {
       }
     },
     hooks: {
-      afterOperation: ({ item }) => {
-        notifyClients( 'USER_CHANGED',item );
+      afterOperation: ({ operation,item,originalItem }) => {
+        if (operation== 'delete') {
+          notifyClients( 'USER_DELETED',originalItem.id);
+        } 
+        else if (operation=='create'){
+          notifyClients('USER_CREATED',item)
+        }
+        else{
+          notifyClients('USER_CHANGED',item)
+        }
       }
     },
     fields: {
@@ -60,6 +68,8 @@ export const lists = {
       afterOperation: ({ operation, item, originalItem  }) => {
         if (operation == "delete")
         notifyClients('TASK_DELETED', originalItem.id);
+        else if (operation == "create")
+        notifyClients('TASK_CREATED', item);
         else
         notifyClients('TASK_CHANGED', item);
       }
