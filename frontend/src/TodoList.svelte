@@ -8,9 +8,9 @@
 	interface Props {
 		tasks: Task[];
 		users: User[];
-		onUpdateTodo(todo: Task): void;
-		onToggleTodo(todo: Task): void;
-		onDelete(todo: Task): void;
+		onUpdateTask(task: Task): void;
+		onToggleTask(task: Task): void;
+		onDelete(task: Task): void;
 		updateTaskError?: Error | null;
 		removeTaskError?: Error | null;
 	}
@@ -18,8 +18,8 @@
 	let {
 		tasks,
 		users,
-		onUpdateTodo,
-		onToggleTodo,
+		onUpdateTask,
+		onToggleTask,
 		onDelete,
 		updateTaskError = $bindable(),
 		removeTaskError = $bindable()
@@ -31,23 +31,23 @@
 
 	let sortedTasks = $derived(tasks.toSorted((a, b) => Number(a.done) - Number(b.done)));
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
-	function getAssigneeName(todo: Task) {
-		const assignee = users.find((user) => user.id === todo.assigneeId);
+	function getAssigneeName(task: Task) {
+		const assignee = users.find((user) => user.id === task.assigneeId);
 		return assignee ? assignee.name : 'Non assigné';
 	}
 
 	function onSubmit(evt: Event) {
 		if (editing) {
 			evt.preventDefault();
-			onUpdateTodo(editing);
+			onUpdateTask(editing);
 			editing = null;
 		}
 	}
 
-	async function selectUpdateTask(todo: Task, focus: 'label' | 'assignee' = 'label') {
+	async function selectUpdateTask(task: Task, focus: 'label' | 'assignee' = 'label') {
 		if (!labelEl || !assigneeEl) return;
 
-		editing = todo.clone();
+		editing = task.clone();
 
 		await tick();
 		if (focus == 'label') {
@@ -59,11 +59,11 @@
 </script>
 
 <ul class="todo-list">
-	{#each sortedTasks as todo, i (todo.id)}
-		<li class:done={todo.done} animate:flip={{ duration: 400 }}>
+	{#each sortedTasks as task, i (task.id)}
+		<li class:done={task.done} animate:flip={{ duration: 400 }}>
 			<div class="task-info">
-				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />
-				{#if editing?.id === todo.id}
+				<input type="checkbox" checked={task.done} onchange={() => onToggleTask(task)} />
+				{#if editing?.id === task.id}
 					<form onsubmit={onSubmit} class="edit-form">
 						<input
 							type="text"
@@ -79,32 +79,32 @@
 								<option value={user.id}>{user.name}</option>
 							{/each}
 						</select>
-						<button><img src={doneIcon} alt="Valider le Todo" /></button>
+						<button><img src={doneIcon} alt="Valider la Task" /></button>
 					</form>
 				{:else}
 					<button
 						type="button"
 						class="invisible-button label"
 						onclick={() => {
-							selectUpdateTask(todo, 'label');
+							selectUpdateTask(task, 'label');
 						}}
 					>
-						{todo.description}
+						{task.description}
 					</button>
 
 					<button
 						type="button"
 						class="invisible-button assignee"
 						onclick={() => {
-							selectUpdateTask(todo, 'assignee');
+							selectUpdateTask(task, 'assignee');
 						}}
 					>
-						({getAssigneeName(todo)})
+						({getAssigneeName(task)})
 					</button>
 				{/if}
 			</div>
 			<div class="task-actions">
-				<button onclick={() => onDelete(todo)}>
+				<button onclick={() => onDelete(task)}>
 					<img src={removeIcon} alt="Supprimer" />
 				</button>
 			</div>

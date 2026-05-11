@@ -294,8 +294,8 @@
 			<TodoList
 				{tasks}
 				{users}
-				onToggleTodo={(todo) => ToggleTask(todo)}
-				onUpdateTodo={(todo) => UpdateTask(todo)}
+				onToggleTask={(task) => ToggleTask(task)}
+				onUpdateTask={(task) => UpdateTask(task)}
 				onDelete={removeTask}
 				bind:updateTaskError
 				bind:removeTaskError
