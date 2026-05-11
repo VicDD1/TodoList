@@ -1,14 +1,17 @@
 import { config } from '@keystone-6/core'
+import { config as loadDotEnv } from "dotenv"
 import { lists } from './schema'
 import { withAuth, session } from './auth'
 
+loadDotEnv()
+
 const sseClients: Set<(data: string) => void> = new Set();
 
-export function heartbeat() {
+setInterval(function heartbeat() {
   for (const send of sseClients) {
-    send(":heartbeat\n\n")
+    send(": heartbeat\n\n")
   }
-}
+}, 5000);
 
 export const notifyClients = (type: string, data: any) => {
   const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -49,6 +52,8 @@ export default withAuth(
 
           const send = (data: string) => res.write(data);
           sseClients.add(send);
+
+          res.write(": hello\n\nretry: 1000\n\n")
 
           req.on('close', () => {
             sseClients.delete(send);

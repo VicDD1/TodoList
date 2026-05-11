@@ -1,22 +1,22 @@
 <script lang="ts">
-	import { type Todo, type User } from './Dashboard.svelte';
+	import { type Task, type User } from './Dashboard.svelte';
 	import removeIcon from './remove.svg';
 	import doneIcon from './done.svg';
 	import { flip } from 'svelte/animate';
 	import { tick } from 'svelte';
 
 	interface Props {
-		todos: Todo[];
+		tasks: Task[];
 		users: User[];
-		onUpdateTodo(todo: Todo): void;
-		onToggleTodo(todo: Todo): void;
-		onDelete(todo: Todo): void;
-		updateTaskError?: Error;
-		removeTaskError?: Error;
+		onUpdateTodo(todo: Task): void;
+		onToggleTodo(todo: Task): void;
+		onDelete(todo: Task): void;
+		updateTaskError?: Error | null;
+		removeTaskError?: Error | null;
 	}
 
 	let {
-		todos,
+		tasks,
 		users,
 		onUpdateTodo,
 		onToggleTodo,
@@ -25,24 +25,28 @@
 		removeTaskError = $bindable()
 	}: Props = $props();
 
-	let editing = $state<Todo>(null);
+	let editing = $state<Task | null>(null);
 	let labelEl = $state<HTMLInputElement>();
 	let assigneeEl = $state<HTMLSelectElement>();
 
-	let sortedTodos = $derived(todos.toSorted((a, b) => Number(a.done) - Number(b.done)));
+	let sortedTasks = $derived(tasks.toSorted((a, b) => Number(a.done) - Number(b.done)));
 	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
-	function getAssigneeName(todo: Todo) {
+	function getAssigneeName(todo: Task) {
 		const assignee = users.find((user) => user.id === todo.assigneeId);
 		return assignee ? assignee.name : 'Non assigné';
 	}
 
 	function onSubmit(evt: Event) {
-		evt.preventDefault();
-		onUpdateTodo(editing);
-		editing = null;
+		if (editing) {
+			evt.preventDefault();
+			onUpdateTodo(editing);
+			editing = null;
+		}
 	}
 
-	async function selectUpdateTask(todo: Todo, focus: 'label' | 'assignee' = 'label') {
+	async function selectUpdateTask(todo: Task, focus: 'label' | 'assignee' = 'label') {
+		if (!labelEl || !assigneeEl) return;
+
 		editing = todo.clone();
 
 		await tick();
@@ -55,7 +59,7 @@
 </script>
 
 <ul class="todo-list">
-	{#each sortedTodos as todo, i (todo.id)}
+	{#each sortedTasks as todo, i (todo.id)}
 		<li class:done={todo.done} animate:flip={{ duration: 400 }}>
 			<div class="task-info">
 				<input type="checkbox" checked={todo.done} onchange={() => onToggleTodo(todo)} />

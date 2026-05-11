@@ -3,13 +3,13 @@
 		public id: string;
 		public name: string;
 		public email: string;
-		public todoIds: string[];
+		public taskIds: string[];
 
-		constructor(id: string, name: string, email: string, todoIds: string[] = []) {
+		constructor(id: string, name: string, email: string, taskIds: string[] = []) {
 			this.id = id;
 			this.name = name;
 			this.email = email;
-			this.todoIds = todoIds;
+			this.taskIds = taskIds;
 		}
 
 		toString() {
@@ -17,11 +17,11 @@
 		}
 	}
 
-	export class Todo {
+	export class Task {
 		public id: string;
 		public description: string;
 		public done: boolean;
-		public assigneeId?: string | null;
+		public assigneeId: string | null;
 
 		constructor(id: string, description: string, done: boolean, assigneeID: string | null) {
 			this.id = id;
@@ -31,7 +31,7 @@
 		}
 
 		clone() {
-			return new Todo(this.id, this.description, this.done, this.assigneeId);
+			return new Task(this.id, this.description, this.done, this.assigneeId);
 		}
 
 		toString() {
@@ -47,7 +47,7 @@
 	import Conexion from './Conexion.svelte';
 	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
 
-	const API_URL = 'https://keystonetodostage.share.zrok.io/api/graphql';
+	const API_URL = import.meta.env.VITE_API_URL;
 
 	let token: string | null = $state(localStorage.getItem('keystonejs-session'));
 	$effect(() => {
@@ -55,25 +55,29 @@
 		else localStorage.removeItem('keystonejs-session');
 	});
 
-	let dependency = $state({ todo: 1, user: 1, auth: 1 });
 	$effect(() => {
 		const sseUrl = 'https://keystonetodostage.share.zrok.io/api/events';
 		const eventSource = new EventSource(sseUrl);
 
 		eventSource.onmessage = (event) => {
 			const data = JSON.parse(event.data);
-			if (
-				data.type === 'TASK_CHANGED' ||
-				data.type === 'TASK_DELETED' ||
-				data.type === 'TASK_CREATED'
-			)
-				dependency.todo++;
-			if (
-				data.type === 'USER_CHANGED' ||
-				data.type === 'USER_DELETED' ||
-				data.type === 'USER_CREATED'
-			)
-				dependency.user++;
+			switch (event.type) {
+				case 'TASK_CHANGED':
+					const task = data as Task;
+					break;
+				case 'TASK_DELETED':
+					break;
+				case 'TASK_CREATED':
+					break;
+				case 'USER_CHANGED':
+					break;
+				case 'USER_DELETED':
+					break;
+				case 'USER_CREATED':
+					break;
+				default:
+					break;
+			}
 		};
 
 		return () => {
@@ -82,7 +86,7 @@
 	});
 
 	// State global de l'application
-	let { todos, users, me } = $derived(await getData(token));
+	let { tasks, users, me } = $derived(await getData(token));
 	let isConnected: boolean = $derived(!!me);
 
 	let email: string = $state('');
@@ -91,14 +95,12 @@
 	let newTaskLabel: string = $state('');
 	let newTaskUser: string | null = $state(null);
 
-	let createTaskError = $state(null);
-	let updateTaskError = $state(null);
-	let removeTaskError = $state(null);
+	let createTaskError = $state<Error | null>(null);
+	let updateTaskError = $state<Error | null>(null);
+	let removeTaskError = $state<Error | null>(null);
 
-	async function getData(token: string) {
-		dependency.todo;
-		dependency.user;
-		dependency.auth;
+	async function getData(token: string | null) {
+		if (!token) return { tasks: [], users: [], me: null };
 
 		const result = await gqlQuery2<{ tasks: any[]; users: any[]; me: any }>({
 			token,
@@ -112,10 +114,11 @@
 			}`
 		});
 		const [error, data] = result.asTuple();
+		if (error) throw error;
 
 		return {
-			todos: data.tasks.map(
-				(task) => new Todo(task.id, task.label, task.isComplete, task.assignedTo?.id || null)
+			tasks: data.tasks.map(
+				(task: Task) => new Task(task.id, task.description, task.done, task.assigneeId || null)
 			),
 			users: data.users.map(
 				(u) =>
@@ -123,7 +126,7 @@
 						u.id,
 						u.name,
 						u.email,
-						u.tasks.map((task) => task.id)
+						u.tasks.map((task: Task) => task.id)
 					)
 			),
 			me: data.me ? new User(data.me.id, data.me.name, data.me.email) : null
@@ -133,12 +136,13 @@
 	// Fonction de déconnexion qui met à null le token
 	function logout() {
 		token = null;
-		dependency.auth++;
 	}
 
 	async function addTask(newTaskLabel: string, newTaskUser: string | null) {
+		if (!token) return;
 		if (newTaskLabel == '')
 			createTaskError = new Error('Veuillez entrer une description pour la tâche.');
+
 		await gqlQuery2({
 			token,
 			query: `mutation CreateTask($input: TaskCreateInput!) { createTask(data: $input) { id } }`,
@@ -150,31 +154,28 @@
 				}
 			}
 		}).match(
-			(data) => {
-				dependency.todo++;
-			},
+			(data) => {},
 			(error) => {
 				createTaskError = error;
 			}
 		);
 	}
 
-	async function removeTask(todo: Todo) {
+	async function removeTask(todo: Task) {
+		if (!token) return;
 		const [error, data] = await gqlQuery2({
 			token,
 			query: `mutation($id: ID) { deleteTask(where: { id: $id }) { id } }`,
 			variables: { id: todo.id }
 		}).asTuple();
 		if (error) removeTaskError = error;
-
-		dependency.todo++;
 	}
 
-	async function UpdateTask(todo: Todo) {
+	async function UpdateTask(todo: Task) {
+		if (!token) return;
 		const newTodo = todo.clone();
-		const idx = todos.findIndex((todo) => todo.id == newTodo.id);
-		if (idx != -1) todos = todos.with(idx, newTodo);
-
+		const idx = tasks.findIndex((todo) => todo.id == newTodo.id);
+		if (idx != -1) tasks = tasks.with(idx, newTodo);
 		const [error, data] = await gqlQuery2<{ updateTask: any }>({
 			token,
 			query: `
@@ -193,16 +194,17 @@
 			}
 		}).asTuple();
 		if (error) updateTaskError = error;
-		dependency.todo++;
 	}
 
-	function ToggleTask(todo: Todo) {
+	function ToggleTask(todo: Task) {
 		todo.done = !todo.done;
 		return UpdateTask(todo);
 	}
 
 	async function DeleteAllDone() {
-		const idsToDelete = todos.filter((todo) => todo.done).map((todo) => ({ id: todo.id }));
+		if (!token) return;
+
+		const idsToDelete = tasks.filter((todo) => todo.done).map((todo) => ({ id: todo.id }));
 		const [error, data] = await gqlQuery2({
 			token,
 			query: `
@@ -221,8 +223,6 @@
 			removeTaskError = error;
 			console.error(removeTaskError);
 		}
-
-		dependency.todo++;
 	}
 
 	function gqlQuery2<T>({
@@ -292,7 +292,7 @@
 			</form>
 
 			<TodoList
-				{todos}
+				{tasks}
 				{users}
 				onToggleTodo={(todo) => ToggleTask(todo)}
 				onUpdateTodo={(todo) => UpdateTask(todo)}
