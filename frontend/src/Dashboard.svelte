@@ -66,14 +66,31 @@
 					const task = data as Task;
 					break;
 				case 'TASK_DELETED':
+					const updatedtask: Task[] = [];
+					tasks.forEach((task) => {
+						if (data.id != task.id) {
+							updatedtask.push(new Task(data.id, data.label, data.isComplete, data.assignedToId));
+						}
+					});
+					tasks = updatedtask;
 					break;
 				case 'TASK_CREATED':
+					tasks.push(new Task(data.id, data.label, data.isComplete, data.assignedToId));
 					break;
 				case 'USER_CHANGED':
+					const user = data as User;
 					break;
 				case 'USER_DELETED':
+					const updateduser: User[] = [];
+					users.forEach((user) => {
+						if (data.id != user.id) {
+							updateduser.push(new User(data.id, data.name, data.email, data.taskIds));
+						}
+					});
+					users = updateduser;
 					break;
 				case 'USER_CREATED':
+					users.push(new User(data.id, data.name, data.email));
 					break;
 				default:
 					break;
@@ -118,7 +135,7 @@
 
 		return {
 			tasks: data.tasks.map(
-				(task: Task) => new Task(task.id, task.description, task.done, task.assigneeId || null)
+				(task: any) => new Task(task.id, task.label, task.isComplete, task.assignedTo?.id || null)
 			),
 			users: data.users.map(
 				(u) =>
@@ -256,6 +273,8 @@
 				else return data;
 			});
 	}
+
+	$inspect(tasks);
 </script>
 
 {#if !isConnected}

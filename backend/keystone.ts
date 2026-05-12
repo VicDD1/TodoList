@@ -11,7 +11,7 @@ setInterval(function heartbeat() {
   for (const send of sseClients) {
     send(": heartbeat\n\n")
   }
-}, 5000);
+}, 4000);
 
 export const notifyClients = (type: string, data: any) => {
   const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
