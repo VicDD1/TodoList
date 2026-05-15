@@ -7,12 +7,6 @@ loadDotEnv()
 
 const sseClients: Set<(data: string) => void> = new Set();
 
-setInterval(function heartbeat() {
-  for (const send of sseClients) {
-    send(": heartbeat\n\n")
-  }
-}, 4000);
-
 export const notifyClients = (type: string, data: any) => {
   const payload = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
   sseClients.forEach(send => send(payload));
@@ -51,11 +45,13 @@ export default withAuth(
           res.flushHeaders();
 
           const send = (data: string) => res.write(data);
+          const heartbeatId = setInterval(() => send(": heartbeat\n\n"), 4000);
           sseClients.add(send);
 
           res.write(": hello\n\nretry: 1000\n\n")
 
           req.on('close', () => {
+            clearInterval(heartbeatId)
             sseClients.delete(send);
             res.end();
           });

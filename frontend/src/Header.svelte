@@ -31,7 +31,7 @@
 	h1 {
 		margin: 0;
 		font-size: 1.4rem;
-		color: #1f2937; /* Gris très foncé pour le texte principal */
+		color: #1f2937;
 		letter-spacing: -0.025em;
 		font-weight: 700;
 	}
@@ -44,16 +44,16 @@
 
 	.user-info span {
 		font-size: 0.9rem;
-		color: #6b7280; /* Texte secondaire (muted) */
+		color: #6b7280;
 		font-weight: 500;
 	}
 
 	.user-info button {
 		background-color: transparent;
-		color: #ef4444; /* Rouge moderne plus vif */
+		color: #ef4444;
 		border: 1.5px solid #ef4444;
 		padding: 6px 16px;
-		border-radius: 8px; /* Arrondis cohérents avec le reste du UI */
+		border-radius: 8px;
 		font-size: 0.85rem;
 		font-weight: 600;
 		cursor: pointer;

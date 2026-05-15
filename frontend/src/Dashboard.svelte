@@ -46,6 +46,7 @@
 	import Header from './Header.svelte';
 	import Conexion from './Conexion.svelte';
 	import { safe, type AsyncResult } from '@terrygonguet/utils/result';
+	import { untrack } from 'svelte';
 
 	const API_URL = import.meta.env.VITE_API_URL;
 
@@ -56,54 +57,55 @@
 	});
 
 	$effect(() => {
-		const sseUrl = 'https://keystonetodostage.share.zrok.io/api/events';
+		const sseUrl = import.meta.env.VITE_SSE_URL;
 		const eventSource = new EventSource(sseUrl);
 
-		eventSource.onmessage = (event) => {
+		eventSource.addEventListener('TASK_CREATED', (event) => {
 			const data = JSON.parse(event.data);
-			switch (event.type) {
-				case 'TASK_CHANGED':
-					const task = data as Task;
-					break;
-				case 'TASK_DELETED':
-					const updatedtask: Task[] = [];
-					tasks.forEach((task) => {
-						if (data.id != task.id) {
-							updatedtask.push(new Task(data.id, data.label, data.isComplete, data.assignedToId));
-						}
-					});
-					tasks = updatedtask;
-					break;
-				case 'TASK_CREATED':
-					tasks.push(new Task(data.id, data.label, data.isComplete, data.assignedToId));
-					break;
-				case 'USER_CHANGED':
-					const user = data as User;
-					break;
-				case 'USER_DELETED':
-					const updateduser: User[] = [];
-					users.forEach((user) => {
-						if (data.id != user.id) {
-							updateduser.push(new User(data.id, data.name, data.email, data.taskIds));
-						}
-					});
-					users = updateduser;
-					break;
-				case 'USER_CREATED':
-					users.push(new User(data.id, data.name, data.email));
-					break;
-				default:
-					break;
+			if (!tasks.some((t) => t.id === data.id)) {
+				const newTask = new Task(data.id, data.label, data.isComplete, data.assignedToId || null);
+				tasks = [...tasks, newTask];
 			}
-		};
+		});
+
+		eventSource.addEventListener('TASK_DELETED', (event) => {
+			const data = JSON.parse(event.data);
+			const targetId = typeof data === 'object' ? data.id : data;
+			tasks = tasks.filter((task) => task.id !== targetId);
+		});
+
+		eventSource.addEventListener('TASK_CHANGED', (event) => {
+			const data = JSON.parse(event.data);
+			const idx = tasks.findIndex((t) => t.id === data.id);
+			if (idx !== -1) {
+				tasks = tasks.with(
+					idx,
+					new Task(data.id, data.label, data.isComplete, data.assignedToId || null)
+				);
+			}
+		});
+
+		eventSource.addEventListener('USER_CREATED', (event) => {
+			const data = JSON.parse(event.data);
+			if (!users.some((u) => u.id === data.id)) {
+				users = [...users, new User(data.id, data.name, data.email)];
+			}
+		});
+
+		eventSource.addEventListener('USER_DELETED', (event) => {
+			const data = JSON.parse(event.data);
+			const targetUserId = typeof data === 'object' ? data.id : data;
+			users = users.filter((user) => user.id !== targetUserId);
+		});
 
 		return () => {
 			eventSource.close();
 		};
 	});
 
-	// State global de l'application
-	let { tasks, users, me } = $derived(await getData(token));
+	let tasks = $state<Task[]>([]);
+	let users = $state<User[]>([]);
+	let me = $state<User | null>(null);
 	let isConnected: boolean = $derived(!!me);
 
 	let email: string = $state('');
@@ -115,6 +117,22 @@
 	let createTaskError = $state<Error | null>(null);
 	let updateTaskError = $state<Error | null>(null);
 	let removeTaskError = $state<Error | null>(null);
+
+	$effect(() => {
+		if (token) {
+			getData(token).then((data) => {
+				untrack(() => {
+					tasks = data.tasks;
+					users = data.users;
+					me = data.me;
+				});
+			});
+		} else {
+			tasks = [];
+			users = [];
+			me = null;
+		}
+	});
 
 	async function getData(token: string | null) {
 		if (!token) return { tasks: [], users: [], me: null };
@@ -150,7 +168,6 @@
 		};
 	}
 
-	// Fonction de déconnexion qui met à null le token
 	function logout() {
 		token = null;
 	}
@@ -274,7 +291,10 @@
 			});
 	}
 
-	$inspect(tasks);
+	$inspect('task :', tasks);
+	$inspect('user :', users);
+	$inspect('token :', token);
+	$inspect('me :', me);
 </script>
 
 {#if !isConnected}
@@ -350,7 +370,6 @@
 		font-family: 'Inter', system-ui, sans-serif;
 	}
 
-	/* Barre d'ajout de tâche */
 	.add-task {
 		display: flex;
 		flex-wrap: wrap;
@@ -395,7 +414,6 @@
 		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 	}
 
-	/* Boutons Génériques */
 	button {
 		display: inline-flex;
 		align-items: center;
@@ -415,9 +433,8 @@
 		transform: translateY(0);
 	}
 
-	/* Bouton flottant/principal pour l'édition (le gros bouton en bas) */
 	main > button {
-		width: 60px; /* Format circulaire pour les icônes */
+		width: 60px;
 		height: 60px;
 		border-radius: 50%;
 		margin: 1.5rem auto 0 auto;
@@ -431,7 +448,6 @@
 		filter: brightness(0) invert(1);
 	}
 
-	/* Zone d'erreur */
 	.error {
 		flex: 1 0 100%;
 		color: var(--error-color);

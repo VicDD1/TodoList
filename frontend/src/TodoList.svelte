@@ -30,8 +30,9 @@
 	let assigneeEl = $state<HTMLSelectElement>();
 
 	let sortedTasks = $derived(tasks.toSorted((a, b) => Number(a.done) - Number(b.done)));
-	//on vérifie que le user.id correspond à todo.assigneeId et on affiche le nom du user
+
 	function getAssigneeName(task: Task) {
+		if (!task.assigneeId) return 'Non assigné';
 		const assignee = users.find((user) => user.id === task.assigneeId);
 		return assignee ? assignee.name : 'Non assigné';
 	}
@@ -45,15 +46,16 @@
 	}
 
 	async function selectUpdateTask(task: Task, focus: 'label' | 'assignee' = 'label') {
-		if (!labelEl || !assigneeEl) return;
-
 		editing = task.clone();
 
 		await tick();
-		if (focus == 'label') {
+
+		if (focus == 'label' && labelEl) {
 			labelEl.focus();
-		} else if (focus == 'assignee') {
+		} else if (focus == 'assignee' && assigneeEl) {
 			assigneeEl.focus();
+		} else {
+			return;
 		}
 	}
 </script>
@@ -130,29 +132,26 @@
 		margin: 1.5rem 0;
 	}
 
-	/* Ligne de tâche */
 	li {
 		background: #ffffff;
 		border: 1px solid #e5e7eb;
 		border-radius: 12px;
 		margin-bottom: 12px;
-		padding: 0.75rem 1rem; /* On réduit un peu le padding vertical */
-		display: flex; /* Active le flex sur la ligne */
-		align-items: center; /* Aligne verticalement au centre */
-		justify-content: space-between; /* Pousse le bouton supprimer à droite */
+		padding: 0.75rem 1rem;
+		align-items: center;
+		justify-content: space-between;
 		gap: 15px;
 		transition:
 			transform 0.2s,
 			box-shadow 0.2s;
 	}
 
-	/* Infos de la tâche */
 	.task-info {
 		display: flex;
 		align-items: center;
 		gap: 12px;
-		flex-grow: 1; /* Prend toute la place disponible à gauche */
-		min-width: 0; /* Empêche le texte de déborder */
+		flex-grow: 1;
+		min-width: 0;
 	}
 	.task-info input[type='checkbox'] {
 		width: 18px;
@@ -198,9 +197,10 @@
 
 	.label {
 		flex-grow: 1;
-		overflow: hidden;
-		text-overflow: ellipsis; /* Coupe le texte proprement s'il est trop long */
-		white-space: nowrap;
+		min-width: 0;
+		word-break: break-word;
+		white-space: normal;
+		text-align: left;
 	}
 
 	.done .label {
@@ -213,16 +213,16 @@
 		border: none;
 		padding: 0;
 		margin: 0;
-		font: inherit; /* Reprend la police du parent */
+		font: inherit;
 		color: inherit;
 		cursor: pointer;
 		text-align: left;
 	}
 
 	.invisible-button:hover {
-		text-decoration: underline; /* Optionnel : aide à comprendre que c'est cliquable */
+		text-decoration: underline;
 	}
-	/* Badge Assignee */
+
 	.assignee {
 		font-size: 0.75rem;
 		padding: 4px 10px;
@@ -231,8 +231,24 @@
 		border-radius: 20px;
 		font-weight: 600;
 		border: 1px solid #dbeafe;
-		white-space: nowrap; /* Empêche le badge de revenir à la ligne */
-		flex-shrink: 0; /* Empêche le badge de s'écraser */
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+	.edit-form {
+		display: flex;
+		flex-grow: 1;
+		gap: 8px;
+		align-items: center;
+		min-width: 0;
+	}
+
+	.edit-form input[type='text'] {
+		flex-grow: 1;
+		min-width: 0;
+	}
+
+	.edit-form select {
+		flex-shrink: 0;
 	}
 
 	.task-actions {
@@ -256,7 +272,6 @@
 		height: 18px;
 	}
 
-	/* Gestion des erreurs dans l'édition */
 	.error {
 		flex: 1 0 100%;
 		color: #ef4444;

@@ -1,7 +1,6 @@
 <script lang="ts">
 	let { email, password, token = $bindable(), me = $bindable() } = $props();
 	const API_URL = import.meta.env.VITE_API_URL;
-	console.log(API_URL);
 
 	async function login() {
 		try {
@@ -69,16 +68,15 @@
 </form>
 
 <style>
-	/* Style du conteneur principal */
 	.login-container {
 		background-color: #ffffff;
 		padding: 2.5rem;
 		border-radius: 12px;
-		/* Ombre légèrement plus douce pour coller au Header et au Main */
+
 		box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
 		width: 100%;
 		max-width: 400px;
-		margin: 4rem auto; /* Un peu plus d'espace en haut pour centrer visuellement */
+		margin: 4rem auto;
 		display: flex;
 		flex-direction: column;
 		font-family:
@@ -88,7 +86,6 @@
 			sans-serif;
 	}
 
-	/* Titre */
 	h2 {
 		color: #1f2937;
 		text-align: center;
@@ -97,7 +94,6 @@
 		letter-spacing: -0.025em;
 	}
 
-	/* Champs de saisie */
 	input {
 		width: 100%;
 		padding: 12px 15px;
@@ -107,7 +103,7 @@
 		font-size: 1rem;
 		transition: all 0.2s ease;
 		box-sizing: border-box;
-		background-color: #f9fafb; /* Très léger gris pour les champs */
+		background-color: #f9fafb;
 	}
 
 	input:focus {
@@ -117,7 +113,6 @@
 		box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
 	}
 
-	/* Bouton de connexion */
 	button {
 		background-color: #4f46e5;
 		color: white;
@@ -135,7 +130,6 @@
 		transform: scale(0.98);
 	}
 
-	/* Placeholder stylisé */
 	input::placeholder {
 		color: #9ca3af;
 	}
