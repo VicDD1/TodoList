@@ -43,7 +43,7 @@ export class Task<T, E extends Error = Error> {
 					break
 				case "pending":
 					await task._state.promise
-					const resolved = task as Task<any> // rebind so TS "forgets" about the type narrowing
+					const resolved = task as Task<any> 
 					if (resolved._state.type == "complete")
 						iter = gen.next(resolved._state.value)
 					else if (resolved._state.type == "failed") {

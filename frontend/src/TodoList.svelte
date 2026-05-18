@@ -138,12 +138,13 @@
 		border-radius: 12px;
 		margin-bottom: 12px;
 		padding: 0.75rem 1rem;
-		align-items: center;
+
 		justify-content: space-between;
 		gap: 15px;
 		transition:
 			transform 0.2s,
 			box-shadow 0.2s;
+		align-items: flex-start;
 	}
 
 	.task-info {
