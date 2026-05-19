@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "keystone dev",
-    "start": "keystone start",
+    "start": "PORT=4000 keystone start",
     "build": "keystone build",
+    
     "lint": "prettier --check .",
     "format": "prettier --write ."
   },
