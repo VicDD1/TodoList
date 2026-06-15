@@ -283,10 +283,10 @@
 			})
 			.andThen((response) => response.json())
 			.recover((error) => {
-				throw new Error('wtf?', { cause: error });
+				throw new Error('Response error', { cause: error });
 			})
 			.andThen(({ data, errors }) => {
-				if (errors) throw new Error('API errors lol', { cause: errors });
+				if (errors) throw new Error('API errors', { cause: errors });
 				else return data;
 			});
 	}
